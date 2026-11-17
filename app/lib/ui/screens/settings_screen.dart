@@ -142,10 +142,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     key: const Key('interest-input'),
                     controller: _interest,
                     maxLength: SettingsStore.maxInterestLength,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: tr('예: agent, RAG, 음성', 'e.g. agent, RAG, speech'),
                       counterText: '',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
                     ),
                     onSubmitted: (_) => _addInterest(settings),
                   ),
