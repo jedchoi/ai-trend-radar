@@ -82,6 +82,7 @@ class FakeServer:
         self.uploads: list[dict] = []
         self.reports: list[dict] = []
         self.news: list[dict] = []
+        self.events: list[tuple] = []  # 업로드 순서 (종류, 키, 제공자)
         self.auth: list[str] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -94,10 +95,12 @@ class FakeServer:
         if request.method == "POST" and path == "/api/v1/ingest/daily":
             body = json.loads(request.content)
             self.uploads.append(body)
+            self.events.append(("daily", body["date"], body["provider"]))
             return httpx.Response(200, json={"date": body["date"], "papers": len(body["papers"])})
         if request.method == "POST" and path == "/api/v1/ingest/news":
             body = json.loads(request.content)
             self.news.append(body)
+            self.events.append(("news", len(body["items"]), body["provider"]))
             return httpx.Response(200, json={"news": len(body["items"])})
         if request.method == "POST" and path == "/api/v1/ingest/report":
             self.reports.append(json.loads(request.content))

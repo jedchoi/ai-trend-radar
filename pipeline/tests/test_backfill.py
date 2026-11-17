@@ -158,3 +158,25 @@ def test_backfill_range_and_limits(config):
         dt.date(2026, 11, 16),
     ]
     assert runner.backfill_dates(days=2, until=dt.date(2026, 10, 2)) == [dt.date(2026, 10, 1), dt.date(2026, 10, 2)]
+
+
+def test_backfill_uploads_news_before_slow_ai_phase(config):
+    # 버그 (2026-11-18 사용자 보고 "뉴스는 비어있네"): 뉴스가 몇 시간 걸리는 AI 단계 뒤에야 올라갔다.
+    # BR-P34 (수정): 1단계 직후 뉴스를 AI 없이 먼저 올리고, AI 단계 뒤에 AI 로 다시 분석해 덮어쓴다
+    import dataclasses
+
+    from tests.test_news import ARTICLE_HTML, FEED
+
+    config = dataclasses.replace(config, collect=dataclasses.replace(config.collect, news=True))
+    provider = ai()
+    provider.responders["NEWS"] = lambda u: json.dumps(
+        {"topic": "other", "summary": "AI 뉴스 요약", "key_points": [], "keywords": []}
+    )
+    pages = {"/blog/feed.xml": FEED, "/blog/ggml-org/llama-cpp-v1": ARTICLE_HTML}
+    hf = FakeHF(days=days_items("2026-11-15", "2026-11-16"), trending=trending(), pages=pages)
+    server = FakeServer()
+    assert build(config, hf, server, provider=provider).run_backfill(days=5) == EXIT_OK  # 글 날짜 (11-12 ~ 13) 포함
+    kinds = [(e[0], e[2]) for e in server.events]
+    first_ai = kinds.index(("daily", "fake"))
+    assert ("news", "none") in kinds[:first_ai]
+    assert kinds.index(("news", "fake")) > first_ai

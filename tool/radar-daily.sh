@@ -9,6 +9,7 @@ LOCAL="$ROOT/.local"
 CONFIG="$LOCAL/pipeline.toml"
 LOCK="$LOCAL/run.lock"
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH"
+export PYTHONUNBUFFERED=1  # 로그 파일에 진행 상황이 바로 보이도록
 mkdir -p "$LOCAL/logs"
 [ -f "$CONFIG" ] || { echo "먼저 tool/radar-up.sh 를 실행하세요"; exit 3; }
 

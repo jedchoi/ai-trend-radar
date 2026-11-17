@@ -243,18 +243,20 @@ class Runner:
         except (FileNotFoundError, ValueError):
             return {}
 
-    def _mark_news_seen(self, items: list) -> None:
+    def _mark_news_seen(self, items: list, provider: str) -> None:
         seen = self._news_seen()
-        seen.update({i.id: self.analyzer.provider_name for i in items})
+        seen.update({i.id: provider for i in items})
         self.data.mkdir(parents=True, exist_ok=True)
         (self.data / "news_seen.json").write_text(json.dumps(dict(sorted(seen.items()))))
 
-    def run_news(self, days: int) -> int:
-        """기간 안의 새 블로그 글 → 본문 → 분석 → 10건씩 업로드. 업로드된 것만 seen 에 기록."""
+    def run_news(self, days: int, analyzer: Analyzer | None = None) -> int:
+        """기간 안의 새 블로그 글 → 본문 → 분석 → 10건씩 업로드. 업로드된 것만 seen 에 기록.
+        analyzer 를 주면 그것으로 분석한다 (백필 1단계: AI 없이 빠르게)."""
         if not self.config.collect.news:
             return EXIT_OK
+        analyzer = analyzer or self.analyzer
         started = time.monotonic()
-        provider = self.analyzer.provider_name
+        provider = analyzer.provider_name
         try:
             feed = self.hf.text(FEED_PATH)
             if feed is None:
@@ -278,13 +280,13 @@ class Runner:
                 html = self.hf.text(urlparse(item.url).path)
                 self.sleep(ORIGINAL_PAUSE_S)
                 article = extract_article(html) if html else Article()
-                payload, fell_back = analyze_news(self.analyzer, item, article)
+                payload, fell_back = analyze_news(analyzer, item, article)
                 fallbacks += fell_back
                 pending.append((item, payload))
                 print(f"[뉴스 {n}/{len(todo)}] {item.published_at:%Y-%m-%d} {item.title[:60]}")
                 if len(pending) == 10 or n == len(todo):
                     self.server.upload_news(to_json([p for _, p in pending]), provider)
-                    self._mark_news_seen([i for i, _ in pending])
+                    self._mark_news_seen([i for i, _ in pending], provider)
                     sent += len(pending)
                     pending = []
         except Exception as exc:  # noqa: BLE001 - BR-P33: 올리지 못한 글은 다음 실행에서 다시
@@ -428,6 +430,11 @@ class Runner:
         if not failed:
             self._mark_success(last_day)
 
+        # 뉴스 먼저 (AI 없이, 몇 분): AI 단계는 몇 시간 걸릴 수 있어 그 뒤로 미루지 않는다 (BR-P34)
+        news_days = (self.today_kst() - dates[0]).days + 1
+        if self.config.collect.news:
+            self.run_news(news_days, analyzer=quick)
+
         # 2단계
         if self.analyzer.provider is not None:
             todo = [d for d in reversed(collected) if self._analyzed().get(d.isoformat()) != provider]
@@ -468,9 +475,9 @@ class Runner:
                     f"{time.monotonic() - started:.0f}초)"
                 )
 
-        # 뉴스: 같은 기간의 Hugging Face 블로그 글 (BR-P34: 실패는 기록만, 논문 결과에 영향 없음)
-        if self.config.collect.news:
-            self.run_news((self.today_kst() - dates[0]).days + 1)
+        # 뉴스를 AI 로 다시 분석해 덮어쓰기 (BR-P34: 실패는 기록만, 논문 결과에 영향 없음)
+        if self.config.collect.news and self.analyzer.provider is not None:
+            self.run_news(news_days)
 
         # 3단계
         if reports and self._backfill_reports(dates) != EXIT_OK:

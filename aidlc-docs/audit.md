@@ -293,3 +293,17 @@
 **Context**: Operations (Deployment Execution, 앱 배포 산출물). Security: release 기본 https 유지, http 허용은 http 주소 빌드에 한정. shellcheck 통과
 
 ---
+## 사용자 입력 (질문 · 버그 보고)
+**Timestamp**: 2026-11-18T00:30:00Z
+**User Input**: "허깅페이스에는 뉴스가 원래 없나? 뉴스는 비어있네"
+**AI Response**: "Hugging Face 에는 뉴스 API 가 없어 블로그 (RSS + 본문) 를 뉴스로 쓴다고 답함. 사용자 Mac 로그 확인: 90일 백필 1단계 (논문 업로드) 완료, 2단계 (claude 분석, 몇 시간) 진행 중이고 뉴스는 2단계 뒤에 실행되도록 되어 있어 비어 있었음 → 설계 결함. 실패 테스트 (test_backfill_uploads_news_before_slow_ai_phase, RED) → 수정: 1단계 직후 AI 없이 뉴스 업로드, AI 단계 뒤 AI 로 덮어쓰기 (GREEN 116 passed). 로그 버퍼링으로 backfill.log 에 진행이 안 보이던 문제 → radar-daily.sh 에 PYTHONUNBUFFERED=1. 지금 바로 받는 명령 (radar news --days 90) 안내"
+**Context**: 버그 수정 (BR-P34 문구 갱신), 별도 fix 커밋
+
+---
+## 사용자 입력 (변경 요청)
+**Timestamp**: 2026-11-18T00:20:00Z
+**User Input**: "한국어 영어 전환 기능 추가해줘. aidlc 기법으로 추가해주고, 서버에서 미리 다 번역해두는걸로 하자"
+**AI Response**: "확인 질문 3개 (AskUserQuestion). 답: 번역 위치 = PC 가 번역해 서버에 저장 (Recommended) / 범위 = 원문 본문까지 전부 / 기존 데이터 = 한 번에 채우기 (Recommended)"
+**Context**: 3주기 Requirements Analysis 시작 (확인 질문 답변 = requirements.md 3주기 절의 근거)
+
+---
