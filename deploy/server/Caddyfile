@@ -1,0 +1,13 @@
+# HTTPS 종단 (자동 인증서), HSTS, 접근 로그 (SECURITY-01, 02)
+{$RADAR_DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+	reverse_proxy api:8000
+}

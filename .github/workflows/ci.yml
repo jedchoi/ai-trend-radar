@@ -1,0 +1,107 @@
+# Deployment Pipeline (Operations): 테스트 · 보안 검사 · 산출물. 도구 버전은 고정한다 (SECURITY-10).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check . && ruff format --check .
+      - run: pytest --cov=app --cov-fail-under=80
+      - name: performance (NFR-S01)
+        run: pytest -m perf -q
+      - name: dependency audit
+        run: pip-audit -r requirements.txt
+      - name: SBOM (CycloneDX)
+        run: |
+          pip install cyclonedx-bom==7.2.1
+          cyclonedx-py requirements requirements.lock -o sbom-server.cdx.json
+      - name: contract samples are current
+        run: |
+          python -m tools.make_samples --out /tmp/samples
+          diff -r /tmp/samples ../contract/samples
+          diff -r ../contract/samples ../app/assets/demo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-server
+          path: server/sbom-server.cdx.json
+
+  server-image:
+    runs-on: ubuntu-24.04
+    needs: server
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ai-trend-radar-api:${{ github.sha }} server
+      - name: smoke test
+        run: |
+          docker run -d --name api -p 8000:8000 -e INGEST_TOKEN_SHA256=$(printf t | sha256sum | cut -d' ' -f1) \
+            --read-only --tmpfs /tmp -v radar-data:/data ai-trend-radar-api:${{ github.sha }}
+          for i in $(seq 1 30); do curl -fs localhost:8000/api/v1/health && break; sleep 1; done
+          curl -fs localhost:8000/api/v1/health
+
+  pipeline:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+      - run: uv sync --locked
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run pytest --cov=radar --cov-fail-under=80
+      - run: uv export --no-dev --no-hashes -o /tmp/req.txt && uv run pip-audit -r /tmp/req.txt
+
+  integration:
+    runs-on: ubuntu-24.04
+    needs: [server, pipeline]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r server/requirements-dev.txt -e pipeline
+      - run: PYTHONPATH=server:pipeline pytest integration -q
+
+  app:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.7"
+          channel: stable
+      - run: tool/bootstrap.sh
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+      - name: debug APK (데모 데이터, 서버 주소 없음)
+        run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-demo
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14

@@ -1,0 +1,55 @@
+{
+  "items": [
+    {
+      "id": "2611.17167",
+      "title": "Actor, Judge, or Teacher? Understanding Decision Models in Long-Horizon Agents",
+      "date": "2026-11-13",
+      "topic": "agents",
+      "one_liner": "긴 작업을 하는 에이전트에서 판단 모델을 행동자 · 심판 · 교사 중 어디에 쓰는 게 나은지 비교",
+      "upvotes": 36,
+      "featured": true,
+      "github_url": null
+    },
+    {
+      "id": "2611.10439",
+      "title": "Who Remembers What? Multi-Granularity Memory Extraction for Multi-User, Multi-Agent Interaction",
+      "date": "2026-11-13",
+      "topic": "agents",
+      "one_liner": "여러 사용자 · 여러 에이전트 대화에서 누가 무엇을 기억해야 하는지 나눠 저장하는 메모리 추출 방법",
+      "upvotes": 11,
+      "featured": true,
+      "github_url": null
+    },
+    {
+      "id": "2611.16961",
+      "title": "The Value of Thinking: Learning When to Reason in Hybrid Decision Models",
+      "date": "2026-11-13",
+      "topic": "llm-reasoning",
+      "one_liner": "언제 길게 생각하고 언제 바로 답할지 학습하는 하이브리드 모델",
+      "upvotes": 9,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.08219",
+      "title": "Agent-R^2: Scaling Agents for Realistic Productivity Work via Real-Source Data Synthesis",
+      "date": "2026-11-13",
+      "topic": "agents",
+      "one_liner": "실제 업무 자료로 합성한 데이터로 생산성 에이전트를 확장",
+      "upvotes": 8,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "261112.00000",
+      "title": "Study on video and moe (2026-11-12 #0)",
+      "date": "2026-11-12",
+      "topic": "image-video-gen",
+      "one_liner": "video · moe 관련 예시 논문",
+      "upvotes": 24,
+      "featured": true,
+      "github_url": null
+    }
+  ],
+  "total": 50
+}

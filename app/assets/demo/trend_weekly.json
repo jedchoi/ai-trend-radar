@@ -1,0 +1,182 @@
+{
+  "period": "week",
+  "key": "2026-W46",
+  "start": "2026-11-09",
+  "end": "2026-11-15",
+  "paper_count": 34,
+  "topics": [
+    {
+      "topic": "agents",
+      "count": 6,
+      "prev_count": 6,
+      "delta": 0
+    },
+    {
+      "topic": "image-video-gen",
+      "count": 6,
+      "prev_count": 0,
+      "delta": 6
+    },
+    {
+      "topic": "multimodal-vision",
+      "count": 5,
+      "prev_count": 8,
+      "delta": -3
+    },
+    {
+      "topic": "robotics-physical",
+      "count": 5,
+      "prev_count": 6,
+      "delta": -1
+    },
+    {
+      "topic": "evaluation-benchmark",
+      "count": 4,
+      "prev_count": 8,
+      "delta": -4
+    },
+    {
+      "topic": "llm-reasoning",
+      "count": 4,
+      "prev_count": 1,
+      "delta": 3
+    },
+    {
+      "topic": "speech-audio",
+      "count": 3,
+      "prev_count": 7,
+      "delta": -4
+    },
+    {
+      "topic": "training-optimization",
+      "count": 1,
+      "prev_count": 9,
+      "delta": -8
+    }
+  ],
+  "rising_keywords": [
+    {
+      "keyword": "memory",
+      "count": 5,
+      "baseline": 0.0,
+      "ratio": 10.0
+    }
+  ],
+  "baseline_ready": true,
+  "top_papers": [
+    {
+      "id": "2611.15777",
+      "title": "SO-Arena: Benchmarking the Capability Spectrum and Reliability of System One Models",
+      "date": "2026-11-13",
+      "topic": "evaluation-benchmark",
+      "one_liner": "긴 추론 없이 바로 답하는 'System One' 모델을 11개 분야에서 평가하는 벤치마크",
+      "upvotes": 85,
+      "featured": true,
+      "github_url": "https://github.com/holdrain/SO-Arena"
+    },
+    {
+      "id": "2611.14815",
+      "title": "BirdDreams: Joint Perspective and BEV Video Generation for a Plausible, Reactive Driving World Model",
+      "date": "2026-11-13",
+      "topic": "robotics-physical",
+      "one_liner": "카메라 영상과 조감도 영상을 함께 생성해 주행 세계 모델의 일관성을 높인 연구",
+      "upvotes": 56,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.13004",
+      "title": "G-STAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation",
+      "date": "2026-11-13",
+      "topic": "image-video-gen",
+      "one_liner": "강하게 압축한 토큰으로도 자기회귀 이미지 생성 품질을 지키는 토큰 용량 조절 방법",
+      "upvotes": 46,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.15131",
+      "title": "Duo: A Reciprocal World Model for Full-Duplex Interaction",
+      "date": "2026-11-13",
+      "topic": "speech-audio",
+      "one_liner": "말하면서 듣는 전이중 대화를 위한 상호 세계 모델",
+      "upvotes": 45,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.16748",
+      "title": "PhysLoop: Harnessing LLMs' Physics Awareness for Self-Improving Video Generation Models",
+      "date": "2026-11-13",
+      "topic": "image-video-gen",
+      "one_liner": "LLM 의 물리 상식으로 영상 생성 모델을 스스로 개선시키는 반복 학습",
+      "upvotes": 41,
+      "featured": false,
+      "github_url": null
+    }
+  ],
+  "hub_new": [
+    {
+      "kind": "dataset",
+      "id": "scenario-labs/3d-collection",
+      "first_seen": "2026-11-13",
+      "days": 1
+    },
+    {
+      "kind": "space",
+      "id": "multimodalart/h3-acceleration-arena",
+      "first_seen": "2026-11-13",
+      "days": 1
+    },
+    {
+      "kind": "space",
+      "id": "pollen-robotics/microduck-simulator",
+      "first_seen": "2026-11-13",
+      "days": 1
+    }
+  ],
+  "hub_steady": [
+    {
+      "kind": "model",
+      "id": "MiniMaxAI/MiniMax-H3-Image",
+      "streak_days": 43
+    },
+    {
+      "kind": "model",
+      "id": "zai-org/GLM-5.3-Flash",
+      "streak_days": 43
+    },
+    {
+      "kind": "model",
+      "id": "Qwen/Qwen3.8-Flash-Next",
+      "streak_days": 6
+    },
+    {
+      "kind": "model",
+      "id": "Lightricks/LTX-2.5",
+      "streak_days": 3
+    },
+    {
+      "kind": "dataset",
+      "id": "nvidia/simready-assets",
+      "streak_days": 1
+    },
+    {
+      "kind": "dataset",
+      "id": "scenario-labs/3d-collection",
+      "streak_days": 1
+    },
+    {
+      "kind": "space",
+      "id": "multimodalart/h3-acceleration-arena",
+      "streak_days": 1
+    },
+    {
+      "kind": "space",
+      "id": "pollen-robotics/microduck-simulator",
+      "streak_days": 1
+    }
+  ],
+  "narrative": "이번 주는 에이전트 논문이 가장 많았고, 특히 메모리 관련 키워드가 직전 4주 평균의 몇 배로 늘었다. 평가 분야에서는 정확도와 신뢰도를 따로 보는 벤치마크가 주목받았다. 다음 주에는 다중 사용자 메모리 설계가 실제 오픈소스 구현으로 이어지는지 지켜볼 만하다.",
+  "narrative_provider": "anthropic"
+}

@@ -1,0 +1,181 @@
+{
+  "period": "month",
+  "key": "2026-11",
+  "start": "2026-11-01",
+  "end": "2026-11-30",
+  "paper_count": 88,
+  "topics": [
+    {
+      "topic": "multimodal-vision",
+      "count": 14,
+      "prev_count": 18,
+      "delta": -4
+    },
+    {
+      "topic": "speech-audio",
+      "count": 13,
+      "prev_count": 25,
+      "delta": -12
+    },
+    {
+      "topic": "training-optimization",
+      "count": 12,
+      "prev_count": 27,
+      "delta": -15
+    },
+    {
+      "topic": "evaluation-benchmark",
+      "count": 12,
+      "prev_count": 27,
+      "delta": -15
+    },
+    {
+      "topic": "agents",
+      "count": 12,
+      "prev_count": 23,
+      "delta": -11
+    },
+    {
+      "topic": "robotics-physical",
+      "count": 12,
+      "prev_count": 22,
+      "delta": -10
+    },
+    {
+      "topic": "llm-reasoning",
+      "count": 7,
+      "prev_count": 30,
+      "delta": -23
+    },
+    {
+      "topic": "image-video-gen",
+      "count": 6,
+      "prev_count": 28,
+      "delta": -22
+    }
+  ],
+  "rising_keywords": [],
+  "baseline_ready": false,
+  "top_papers": [
+    {
+      "id": "2611.15777",
+      "title": "SO-Arena: Benchmarking the Capability Spectrum and Reliability of System One Models",
+      "date": "2026-11-13",
+      "topic": "evaluation-benchmark",
+      "one_liner": "긴 추론 없이 바로 답하는 'System One' 모델을 11개 분야에서 평가하는 벤치마크",
+      "upvotes": 85,
+      "featured": true,
+      "github_url": "https://github.com/holdrain/SO-Arena"
+    },
+    {
+      "id": "2611.14815",
+      "title": "BirdDreams: Joint Perspective and BEV Video Generation for a Plausible, Reactive Driving World Model",
+      "date": "2026-11-13",
+      "topic": "robotics-physical",
+      "one_liner": "카메라 영상과 조감도 영상을 함께 생성해 주행 세계 모델의 일관성을 높인 연구",
+      "upvotes": 56,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.13004",
+      "title": "G-STAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation",
+      "date": "2026-11-13",
+      "topic": "image-video-gen",
+      "one_liner": "강하게 압축한 토큰으로도 자기회귀 이미지 생성 품질을 지키는 토큰 용량 조절 방법",
+      "upvotes": 46,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.15131",
+      "title": "Duo: A Reciprocal World Model for Full-Duplex Interaction",
+      "date": "2026-11-13",
+      "topic": "speech-audio",
+      "one_liner": "말하면서 듣는 전이중 대화를 위한 상호 세계 모델",
+      "upvotes": 45,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.16748",
+      "title": "PhysLoop: Harnessing LLMs' Physics Awareness for Self-Improving Video Generation Models",
+      "date": "2026-11-13",
+      "topic": "image-video-gen",
+      "one_liner": "LLM 의 물리 상식으로 영상 생성 모델을 스스로 개선시키는 반복 학습",
+      "upvotes": 41,
+      "featured": false,
+      "github_url": null
+    }
+  ],
+  "hub_new": [
+    {
+      "kind": "model",
+      "id": "Qwen/Qwen3.8-Flash-Next",
+      "first_seen": "2026-11-08",
+      "days": 6
+    },
+    {
+      "kind": "dataset",
+      "id": "scenario-labs/3d-collection",
+      "first_seen": "2026-11-13",
+      "days": 1
+    },
+    {
+      "kind": "space",
+      "id": "multimodalart/h3-acceleration-arena",
+      "first_seen": "2026-11-13",
+      "days": 1
+    },
+    {
+      "kind": "space",
+      "id": "pollen-robotics/microduck-simulator",
+      "first_seen": "2026-11-13",
+      "days": 1
+    }
+  ],
+  "hub_steady": [
+    {
+      "kind": "model",
+      "id": "MiniMaxAI/MiniMax-H3-Image",
+      "streak_days": 43
+    },
+    {
+      "kind": "model",
+      "id": "zai-org/GLM-5.3-Flash",
+      "streak_days": 43
+    },
+    {
+      "kind": "model",
+      "id": "Qwen/Qwen3.8-Flash-Next",
+      "streak_days": 6
+    },
+    {
+      "kind": "model",
+      "id": "Lightricks/LTX-2.5",
+      "streak_days": 3
+    },
+    {
+      "kind": "dataset",
+      "id": "nvidia/simready-assets",
+      "streak_days": 1
+    },
+    {
+      "kind": "dataset",
+      "id": "scenario-labs/3d-collection",
+      "streak_days": 1
+    },
+    {
+      "kind": "space",
+      "id": "multimodalart/h3-acceleration-arena",
+      "streak_days": 1
+    },
+    {
+      "kind": "space",
+      "id": "pollen-robotics/microduck-simulator",
+      "streak_days": 1
+    }
+  ],
+  "narrative": null,
+  "narrative_provider": null
+}

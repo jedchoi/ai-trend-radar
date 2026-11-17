@@ -1,0 +1,35 @@
+# AI Trend Radar 파이프라인 설정 — ~/.config/ai-trend-radar/config.toml 로 복사해 쓴다
+# 비밀 (토큰 · API 키) 은 여기 쓰지 않는다. 환경 변수 이름만 적고, 값은 키체인 → run-daily.sh 가 넘긴다.
+
+[server]
+url = "https://radar.example.com"      # backend 서버 주소 (https 필수)
+token_env = "RADAR_INGEST_TOKEN"       # 업로드 토큰이 든 환경 변수
+# token_file = "~/.config/ai-trend-radar/token"   # 또는 권한 600 파일
+
+[ai]
+# none      : AI 없이 동작 (Hugging Face AI 요약 · 키워드 규칙). 키 · 구독 불필요
+# anthropic : Claude API          (api_key_env = "ANTHROPIC_API_KEY")
+# openai    : OpenAI 또는 호환 서버 (LM Studio · vLLM · OpenRouter 는 base_url 지정)
+# gemini    : Google Gemini API   (api_key_env = "GEMINI_API_KEY")
+# ollama    : 내 PC 의 Ollama      (base_url 기본 http://localhost:11434)
+# cli       : 구독형 AI CLI 호출    (command 예: ["claude", "-p"], ["gemini", "-p"], ["codex", "exec"])
+provider = "none"
+model = ""             # none · cli 외에는 필수. 각 제공자 문서에서 현재 모델 이름을 확인해 적는다
+api_key_env = ""
+base_url = ""
+command = []
+prompt_mode = "stdin"  # cli 제공자: stdin (표준 입력) | arg (마지막 인자)
+max_ai_papers = 60     # 하루 AI 요약 대상 상한 (추천 수 상위). 나머지는 none 결과
+timeout_s = 120
+
+[collect]
+models = 10
+datasets = 5
+spaces = 5
+
+[select]
+max_featured = 5
+focus_topics = ["llm-reasoning", "agents"]   # 주목 논문 선정 가산점 주제
+
+[paths]
+data_dir = "~/.local/share/ai-trend-radar"
