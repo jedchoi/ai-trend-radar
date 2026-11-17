@@ -1,16 +1,16 @@
 # 인계 (Handoff) — 다른 AI 도구 · 사람이 이어서 작업하기
 
 이 문서만 읽고 이어갈 수 있게 쓴다 (NFR-12). 순서: 이 문서 → `aidlc-state.md` → 필요한 산출물.
-마지막 갱신: 2026-11-17 (2주기 Construction · Build and Test 완료).
+마지막 갱신: 2026-11-18 (3주기 한국어 · 영어 전환 완료).
 
 ## 1. 지금 상태 한눈에
 
 | 항목 | 상태 |
 | --- | --- |
 | 무엇 | Hugging Face 의 논문 · Hub 트렌드 · 블로그 뉴스를 PC 에서 매일 06:00 수집 · AI 분석 → 서버 (Docker: PostgreSQL + FastAPI) 저장 → Flutter 앱에서 보기 |
-| 주기 | 1주기 (기본 시스템) 완료 → 2주기 (Postgres · 뉴스 · 원문 · 06:00 · 설치 즉시 동작 · 앱 개선) 구현 · 검증 완료 |
+| 주기 | 1주기 (기본 시스템) → 2주기 (Postgres · 뉴스 · 원문 · 06:00 · 설치 즉시 동작 · 앱 개선) → 3주기 (한국어 · 영어 전환: PC 가 원문 본문까지 미리 번역해 서버에 저장, 앱은 lang 으로 읽음) 구현 · 검증 완료 |
 | 실행 | 사용자 Mac 에서 `tool/radar-up.sh` 한 번 (아래 3장). 이 저장소를 만든 세션은 Mac 의 Docker · 휴대폰 · huggingface.co 에 접근할 수 없어 실행은 사용자 몫 |
-| 남은 확인 | ① `cd app && flutter test` (2주기 앱 테스트 미실행) ② `tool/radar-up.sh` 실제 실행 ③ 다음 날 06:00 갱신 확인 |
+| 남은 확인 | ① `cd app && flutter test` (앱 61개, 2 · 3주기 분 미실행) ② 서버 갱신 (`tool/radar-up.sh --server-only`, 06:00 실행이 자동으로도 함) ③ 번역 채우기 (`tool/radar-daily.sh --translate 90`) ④ 새 APK 설치 (`tool/build-apk.sh --install`) ⑤ 영어 · 한국어 화면 확인 |
 | 승인 방식 | 사용자 위임 (Standing Approval). 사용자가 "모든 과정은 너의 추천대로" 라고 함 (audit.md 2026-11-17T16:20:00Z) |
 
 ## 2. 구조
@@ -30,9 +30,9 @@ Hugging Face ─┬─ Daily Papers (+ 원본 JSON, 주목 논문 본문)       
 
 | 폴더 | 핵심 파일 |
 | --- | --- |
-| `server/app/` | `schemas.py` (계약 정본), `repository.py` (Postgres), `routes_public.py` · `routes_ingest.py`, `trends.py` |
-| `pipeline/radar/` | `runner.py` (일일 · 백필 · 뉴스 · 원문), `news.py` (RSS · 본문 추출 · 뉴스 분석), `hf_client.py`, `analyze.py`, `providers.py`, `prompts/*.md` |
-| `app/lib/` | `app.dart` (5개 탭), `ui/screens/` (today · news · news_detail · paper · trend · search · library · settings), `data/` (repository · settings · library · read · cache) |
+| `server/app/` | `schemas.py` (계약 정본), `repository.py` (Postgres), `i18n.py` (lang 응답), `routes_public.py` · `routes_ingest.py`, `trends.py` |
+| `pipeline/radar/` | `runner.py` (일일 · 백필 · 뉴스 · 원문 · 번역), `news.py` (RSS · 본문 추출 · 뉴스 분석), `translate.py` (번역), `hf_client.py`, `analyze.py`, `providers.py`, `prompts/*.md` |
+| `app/lib/` | `app.dart` (5개 탭 · 언어 전환), `l10n/strings.dart` (`tr(한, 영)`), `ui/screens/` (today · news · news_detail · paper · trend · search · library · settings), `data/` (repository · settings · library · read · cache) |
 | `tool/` | `radar-up.sh` (한 번에 켜기), `radar-daily.sh` (06:00 실행), `test-db.sh` (테스트용 Postgres), `check.sh` (전체 점검), `local-app.sh` |
 | `deploy/` | `local/` (Docker Desktop · launchd plist), `server/` (원격 운영: Postgres + API + Caddy HTTPS) |
 | `aidlc-docs/` | 요구 · 스토리 · 설계 · 감사 기록 · 이 문서 |
@@ -45,6 +45,7 @@ Hugging Face ─┬─ Daily Papers (+ 원본 JSON, 주목 논문 본문)       
 cd /Volumes/Mac990/Project/ai-trend-radar
 tool/radar-up.sh                 # 서버 → (비어 있으면) 90일 채우기 (백그라운드) → 06:00 일정 → 앱 설치
 tool/radar-up.sh --status        # 상태 · 최근 실행
+tool/radar-daily.sh --translate 90   # 지난 90일 한국어 · 영어 번역 채우기 (몇 시간, 끊겨도 이어서)
 tail -f .local/logs/backfill.log # 첫 채우기 진행
 ```
 
@@ -61,12 +62,13 @@ tool/check.sh                    # 테스트 DB (Docker) 자동 → server · pi
 TEST_DATABASE_URL=postgresql://... tool/check.sh --skip-app   # 이미 있는 Postgres 로
 ```
 
-마지막 결과 (`construction/build-and-test/build-and-test-summary.md`): server 88 · pipeline 115 · 통합 4 passed, 커버리지 96% · 93%, p95 126 ms. 앱 54개는 미실행.
+마지막 결과 (`construction/build-and-test/build-and-test-summary.md`): server 96 · pipeline 127 · 통합 5 passed, 커버리지 97% · 93%, p95 127 ms. 앱 61개는 미실행.
 
 ## 5. 규칙 (깨면 안 되는 것)
 
 - 계약 정본은 `server/app/schemas.py`. 필드는 추가만 (`/api/v1`). 바꾸면 `pipeline/radar/models.py` · `pipeline/radar/news.py` (NewsPayloadItem) · `app/lib/models/` · `contract/samples/` (`cd server && python -m tools.make_samples`) 를 같은 커밋에서
-- AI 호출은 `providers.complete(system, user)` 하나. 프롬프트 첫 줄 = 작업 이름 (BRIEF · DETAIL · HEADLINE · REPORT · NEWS)
+- AI 호출은 `providers.complete(system, user)` 하나. 프롬프트 첫 줄 = 작업 이름 (BRIEF · DETAIL · HEADLINE · REPORT · NEWS · TRANSLATE · TRANSLATE_TEXT)
+- 앱 화면 글자는 반드시 `tr('한국어', 'English')` 로 두 언어를 함께 쓴다. 번역은 원래 표를 바꾸지 않고 `translations` 표에만 (BR-S40 ~ S43)
 - 원문 요청 사이 3초 (NFR-10), 원문 200,000자 · 원본 JSON 100 KB 한도, 원본 JSON 은 공개 응답에 넣지 않음 (BR-S31)
 - 비밀은 저장소 · 로그에 두지 않는다. 서버는 토큰 해시만
 - AI-DLC: 새 기능은 Requirements Analysis 부터, `audit.md` 는 덧붙이기만 (사용자 입력 원문 그대로)
@@ -81,6 +83,9 @@ TEST_DATABASE_URL=postgresql://... tool/check.sh --skip-app   # 이미 있는 Po
 | 스케줄 = PC launchd 06:00 (서버 컨테이너 아님) | 분석 AI (구독형 CLI · Ollama) 가 PC 에 있음 | FR-28, BR-P35 |
 | 앱 = profile 빌드 + 주소 내장 | "설치하면 바로 동작", 로컬 http 허용은 debug · profile 만 (release 는 https) | FR-29, BR-A20 |
 | 테스트 DB = 실제 Postgres (Docker, 메모리) | SQLite 와 동작 차이를 숨기지 않기 위해 | `tool/test-db.sh` |
+| 번역 = PC 가 미리 만들어 서버 `translations` 표에 저장 | 사용자 선택 (확인 질문). 서버에는 AI 가 없고, 앱은 언어를 바꿔도 즉시 표시 | FR-33 ~ FR-35, cycle3-design |
+| 번역 범위 = 원문 본문까지 | 사용자 선택. AI 사용량이 커서 시간 상한 (180분/회) · 짧은 것 먼저 · 이어서 하기 | FR-34, NFR-13 |
+| 앱 언어 전환 = 전체 다시 그리기 (상태 유지) | 화면 위치 · 열린 화면을 잃지 않고 바로 바뀜 | BR-A30 |
 
 ## 7. 다음에 할 만한 일 (우선순위)
 

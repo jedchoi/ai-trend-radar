@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
+import '../format.dart';
+import '../../l10n/strings.dart';
 
 /// 원문 블록 하나 (BR-A24). 길게 누르면 선택 · 복사할 수 있다.
 class OriginalBlock extends StatelessWidget {
@@ -44,7 +46,7 @@ class OriginalTextScreen extends StatelessWidget {
     final blocks = textBlocks(content);
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('원문')),
+      appBar: AppBar(title: Text(tr('원문', 'Original'))),
       body: ListView.builder(
         padding: const EdgeInsets.only(bottom: 32),
         itemCount: blocks.length + 1,
@@ -68,3 +70,11 @@ class OriginalTextScreen extends StatelessWidget {
     );
   }
 }
+
+/// 원문 영역 이름 (BR-A35): 영어 = Original, 한국어 = 번역이 있으면 "본문 (번역)", 없으면 "원문".
+String originalTitle({required bool translated}) => tr(translated ? '본문 (번역)' : '원문', 'Original');
+
+String originalSubtitle(int length, {required bool translated}) => tr(
+      translated ? '${compact(length)}자 · 한국어 번역' : '${compact(length)}자 · 영어 원문 그대로',
+      '${compact(length)} characters',
+    );

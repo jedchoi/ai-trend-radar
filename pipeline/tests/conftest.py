@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from radar.config import AIConfig, CollectConfig, Config, PathsConfig, SelectConfig, ServerConfig
+from radar.config import AIConfig, CollectConfig, Config, PathsConfig, SelectConfig, ServerConfig, TranslateConfig
 
 
 def hf_item(pid: str, **kw) -> dict:
@@ -76,9 +76,11 @@ class FakeHF:
 
 
 class FakeServer:
-    def __init__(self, statuses: list[int] | None = None, stats: dict | None = None):
+    def __init__(self, statuses: list[int] | None = None, stats: dict | None = None, pages: dict | None = None):
         self.statuses = statuses or []
         self.stats = stats or {}
+        self.pages = pages or {}  # GET 경로 → JSON (번역 단계가 읽는 공개 API)
+        self.translations: list[dict] = []
         self.uploads: list[dict] = []
         self.reports: list[dict] = []
         self.news: list[dict] = []
@@ -105,6 +107,13 @@ class FakeServer:
         if request.method == "POST" and path == "/api/v1/ingest/report":
             self.reports.append(json.loads(request.content))
             return httpx.Response(200, json={})
+        if request.method == "POST" and path == "/api/v1/ingest/translations":
+            body = json.loads(request.content)
+            self.translations.append(body)
+            self.events.append(("translations", len(body["items"]), body["provider"]))
+            return httpx.Response(200, json={"translations": len(body["items"])})
+        if request.method == "GET" and path in self.pages:
+            return httpx.Response(200, json=self.pages[path])
         if request.method == "GET" and path.startswith("/api/v1/trends/"):
             key = path.rsplit("/", 1)[1]
             if key in self.stats:
@@ -141,6 +150,7 @@ def config(tmp_path: Path) -> Config:
         collect=CollectConfig(models=2, datasets=1, spaces=1, full_text=False, news=False),
         select=SelectConfig(max_featured=2, focus_topics=["agents"]),
         paths=PathsConfig(data_dir=str(tmp_path / "data")),
+        translate=TranslateConfig(enabled=False),  # 3주기 기능은 test_translate.py 가 켜서 검사
     )
 
 

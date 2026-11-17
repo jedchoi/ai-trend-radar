@@ -35,6 +35,7 @@ from app.schemas import (
     Paper,
     PaperBrief,
     PaperIn,
+    TranslationIngest,
 )
 
 log = logging.getLogger("radar.db")
@@ -112,6 +113,17 @@ CREATE TABLE IF NOT EXISTS news (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC, id);
+CREATE TABLE IF NOT EXISTS translations (
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    fields JSONB NOT NULL,
+    provider TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (kind, key, lang)
+);
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS search_i18n TEXT NOT NULL DEFAULT '';
+ALTER TABLE news ADD COLUMN IF NOT EXISTS search_i18n TEXT NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS ingest_log (
     seq BIGSERIAL PRIMARY KEY,
     ts TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -126,8 +138,23 @@ TRGM = [
     "CREATE EXTENSION IF NOT EXISTS pg_trgm",
     "CREATE INDEX IF NOT EXISTS idx_papers_search ON papers USING GIN (search_text gin_trgm_ops)",
     "CREATE INDEX IF NOT EXISTS idx_news_search ON news USING GIN (search_text gin_trgm_ops)",
+    "CREATE INDEX IF NOT EXISTS idx_papers_search_i18n ON papers USING GIN (search_i18n gin_trgm_ops)",
+    "CREATE INDEX IF NOT EXISTS idx_news_search_i18n ON news USING GIN (search_i18n gin_trgm_ops)",
 ]
-TABLES = ["digests", "papers", "hub_items", "reports", "news", "ingest_log"]
+TABLES = ["digests", "papers", "hub_items", "reports", "news", "translations", "ingest_log"]
+# BR-S42: 번역 필드 (모든 언어) 의 문자열을 이어 붙인 검색용 글
+_I18N_TEXT = """COALESCE((SELECT lower(string_agg(v #>> '{{}}', ' '))
+    FROM translations t, jsonb_path_query(t.fields, 'strict $.**') AS v
+    WHERE t.kind = %s AND t.key = {table}.id AND jsonb_typeof(v) = 'string'), '')"""
+
+
+def _refresh_search_i18n(conn: psycopg.Connection, table: str, kind: str, ids: list[str]) -> None:
+    if ids:
+        conn.execute(
+            f"UPDATE {table} SET search_i18n = {_I18N_TEXT.format(table=table)} WHERE id = ANY(%s)",  # noqa: S608
+            (kind, ids),
+        )
+
 
 HF_PAPER_URL = "https://huggingface.co/papers/{}"
 ARXIV_URL = "https://arxiv.org/abs/{}"
@@ -337,6 +364,7 @@ class Repository:
             for paper in digest.papers:
                 _insert_paper(conn, day, paper)
             _insert_hub(conn, day, digest.hub)
+            _refresh_search_i18n(conn, "papers", "paper", ids)
             conn.execute(
                 "INSERT INTO ingest_log (kind, key, client_ip, count) VALUES ('daily', %s, %s, %s)",
                 (day.isoformat(), client_ip, len(digest.papers)),
@@ -394,19 +422,53 @@ class Repository:
                         for n in news.items
                     ],
                 )
+            _refresh_search_i18n(conn, "news", "news", [n.id for n in news.items])
             conn.execute(
                 "INSERT INTO ingest_log (kind, key, client_ip, count) VALUES ('news', %s, %s, %s)",
                 (news.items[0].id, client_ip, len(news.items)),
             )
         return len(news.items)
 
+    # ---------- 번역 (BR-S40 ~ BR-S43) ----------
+
+    def upsert_translations(self, ingest: TranslationIngest, client_ip: str) -> int:
+        with self.connect() as conn, conn.transaction():
+            with conn.cursor() as cur:
+                cur.executemany(
+                    """INSERT INTO translations (kind, key, lang, fields, provider, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, now())
+                       ON CONFLICT (kind, key, lang) DO UPDATE SET fields = translations.fields || EXCLUDED.fields,
+                       provider = EXCLUDED.provider, updated_at = now()""",
+                    [(t.kind, t.key, t.lang, Jsonb(t.fields), ingest.provider) for t in ingest.items],
+                )
+            for table, kind in (("papers", "paper"), ("news", "news")):
+                _refresh_search_i18n(conn, table, kind, sorted({t.key for t in ingest.items if t.kind == kind}))
+            conn.execute(
+                "INSERT INTO ingest_log (kind, key, client_ip, count) VALUES ('translation', %s, %s, %s)",
+                (f"{ingest.items[0].kind}:{ingest.items[0].key}", client_ip, len(ingest.items)),
+            )
+        return len(ingest.items)
+
+    def translations(self, kind: str, keys: list[str], lang: str, light: bool = False) -> dict[str, dict]:
+        """key → 번역 필드. light 면 긴 필드 (원문 본문) 를 빼고 가져온다."""
+        if not keys:
+            return {}
+        column = "fields - 'full_text' - 'content'" if light else "fields"
+        with self.connect() as conn:
+            rows = conn.execute(
+                f"SELECT key, {column} AS fields FROM translations "  # noqa: S608 - 고정된 두 식 중 하나
+                "WHERE kind = %s AND lang = %s AND key = ANY(%s)",
+                (kind, lang, list(dict.fromkeys(keys))),
+            ).fetchall()
+        return {r["key"]: r["fields"] for r in rows}
+
     def list_news(self, q: str | None, topic: str | None, limit: int, offset: int) -> tuple[list[NewsBrief], int]:
         """BR-S33: 최신순, 단어별 부분 일치 (AND)."""
         where: list[str] = []
         params: list = []
         for word in search_words(q):
-            where.append("search_text LIKE %s")
-            params.append(like_pattern(word))
+            where.append("(search_text LIKE %s OR search_i18n LIKE %s)")
+            params += [like_pattern(word)] * 2
         if topic:
             where.append("topic = %s")
             params.append(topic)
@@ -540,8 +602,8 @@ class Repository:
         where: list[str] = []
         params: list = []
         for word in search_words(q):
-            where.append("p.search_text LIKE %s")
-            params.append(like_pattern(word))
+            where.append("(p.search_text LIKE %s OR p.search_i18n LIKE %s)")
+            params += [like_pattern(word)] * 2
         if topic:
             where.append("p.topic = %s")
             params.append(topic)

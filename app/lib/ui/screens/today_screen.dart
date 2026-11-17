@@ -14,6 +14,7 @@ import '../widgets/news_widgets.dart';
 import '../widgets/paper_widgets.dart';
 import 'news_detail_screen.dart';
 import 'paper_screen.dart';
+import '../../l10n/strings.dart';
 
 /// 뉴스 리스트 (US-01 ~ US-04) + 최신 Hugging Face 소식 (BR-A27).
 class TodayScreen extends StatefulWidget {
@@ -46,14 +47,14 @@ class _TodayScreenState extends State<TodayScreen> {
       _news = LoadController(() => _repo.news(limit: 5));
       final settings = Services.of(context).settings;
       _settings = settings;
-      _serverUrl = settings.serverUrl;
+      _serverUrl = settings.sourceKey; // 주소 · 언어가 바뀌면 다시 받는다
       settings.addListener(_onSettings);
       _reload();
     }
   }
 
   void _onSettings() {
-    final url = _settings!.serverUrl;
+    final url = _settings!.sourceKey;
     if (url != _serverUrl) {
       _serverUrl = url;
       _selectedDate = null;
@@ -104,7 +105,7 @@ class _TodayScreenState extends State<TodayScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (c.status == LoadStatus.error && c.data == null) {
-          return ErrorView(message: c.error ?? '오류', onRetry: _reload);
+          return ErrorView(message: c.error ?? tr('오류', 'Error'), onRetry: _reload);
         }
         final digest = c.data!;
         final interests = services.settings.interests;
@@ -120,11 +121,17 @@ class _TodayScreenState extends State<TodayScreen> {
                 selected: digest.date,
                 onSelected: _selectDate,
               ),
-              _Headline(date: digest.date, lines: digest.headline, provider: digest.provider),
+              _Headline(
+                date: digest.date,
+                lines: digest.headline,
+                provider: digest.provider,
+                untranslated: digest.untranslated,
+              ),
               ..._latestNews(reads),
               ..._featured(digest, interests, reads),
               ..._all(digest, interests, reads),
-              const SectionTitle('Hugging Face 트렌드', subtitle: '오늘 많이 찾는 모델 · 데이터셋 · Spaces'),
+              SectionTitle(tr('Hugging Face 트렌드', 'Hugging Face trending'),
+                  subtitle: tr('오늘 많이 찾는 모델 · 데이터셋 · Spaces', 'Popular models · datasets · Spaces today')),
               HubSection(items: digest.hub),
             ],
           ),
@@ -139,11 +146,11 @@ class _TodayScreenState extends State<TodayScreen> {
     if (items.isEmpty) return const [];
     return [
       SectionTitle(
-        'Hugging Face 소식',
-        subtitle: '블로그 새 글 요약',
+        tr('Hugging Face 소식', 'Hugging Face news'),
+        subtitle: tr('블로그 새 글 요약', 'Latest blog posts, summarized'),
         trailing: widget.onOpenNews == null
             ? null
-            : TextButton(onPressed: widget.onOpenNews, child: const Text('전체 보기')),
+            : TextButton(onPressed: widget.onOpenNews, child: Text(tr('전체 보기', 'See all'))),
       ),
       SizedBox(
         height: 176,
@@ -166,7 +173,9 @@ class _TodayScreenState extends State<TodayScreen> {
     final featured = rankByInterest(digest.featured, (Paper p) => paperInterests(p, interests).isNotEmpty);
     if (featured.isEmpty) return const [];
     return [
-      SectionTitle('주목할 논문', subtitle: '추천 수 · 코드 공개 · 관심 분야로 고른 ${featured.length}편'),
+      SectionTitle(tr('주목할 논문', 'Featured papers'),
+          subtitle: tr('추천 수 · 코드 공개 · 관심 분야로 고른 ${featured.length}편',
+              '${featured.length} picked by upvotes · open code · focus areas')),
       for (final p in featured)
         PaperCard(
           paper: p,
@@ -181,8 +190,8 @@ class _TodayScreenState extends State<TodayScreen> {
     final filtered = digest.papers.where((p) => _topic == null || p.topic == _topic).toList();
     final papers = rankByInterest(filtered, (Paper p) => paperInterests(p, interests).isNotEmpty);
     return [
-      SectionTitle('전체 논문', subtitle: '${digest.papers.length}편'),
-      if (digest.papers.isEmpty) const EmptyNote('이날은 올라온 논문이 없습니다'),
+      SectionTitle(tr('전체 논문', 'All papers'), subtitle: tr('${digest.papers.length}편', '${digest.papers.length} papers')),
+      if (digest.papers.isEmpty) EmptyNote(tr('이날은 올라온 논문이 없습니다', 'No papers on this day')),
       if (digest.papers.isNotEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -190,7 +199,7 @@ class _TodayScreenState extends State<TodayScreen> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              ChoiceChip(label: const Text('전체'), selected: _topic == null, onSelected: (_) => setState(() => _topic = null)),
+              ChoiceChip(label: Text(tr('전체', 'All')), selected: _topic == null, onSelected: (_) => setState(() => _topic = null)),
               for (final t in digest.topics)
                 ChoiceChip(
                   label: Text(t.label),
@@ -242,11 +251,12 @@ class _DateChips extends StatelessWidget {
 }
 
 class _Headline extends StatelessWidget {
-  const _Headline({required this.date, required this.lines, required this.provider});
+  const _Headline({required this.date, required this.lines, required this.provider, this.untranslated = false});
 
   final String date;
   final List<String> lines;
   final String provider;
+  final bool untranslated;
 
   @override
   Widget build(BuildContext context) {
@@ -268,11 +278,13 @@ class _Headline extends StatelessWidget {
         children: [
           Text(dayLabel(date), style: text.labelMedium?.copyWith(color: scheme.onPrimaryContainer)),
           const SizedBox(height: 4),
-          Text('오늘의 세 줄',
+          Text(tr('오늘의 세 줄', 'Today in three lines'),
               style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: scheme.onPrimaryContainer)),
+          if (untranslated && lines.isNotEmpty) ...[const SizedBox(height: 6), const PendingTranslation()],
           const SizedBox(height: 10),
           if (lines.isEmpty)
-            Text('요약할 논문이 없는 날입니다.', style: TextStyle(color: scheme.onPrimaryContainer)),
+            Text(tr('요약할 논문이 없는 날입니다.', 'No papers to summarize on this day.'),
+                style: TextStyle(color: scheme.onPrimaryContainer)),
           for (var i = 0; i < lines.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -287,7 +299,10 @@ class _Headline extends StatelessWidget {
                 ],
               ),
             ),
-          Text(provider == 'none' ? '요약: Hugging Face AI 요약 기반' : '요약: $provider',
+          Text(
+              provider == 'none'
+                  ? tr('요약: Hugging Face AI 요약 기반', 'Summary: based on Hugging Face AI summaries')
+                  : tr('요약: $provider', 'Summary: $provider'),
               style: text.labelSmall?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
         ],
       ),

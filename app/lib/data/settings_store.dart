@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../l10n/strings.dart';
 
 /// AI 에게 묻기 대상 (BR-A08).
 enum AskTarget {
@@ -23,12 +24,16 @@ class SettingsStore extends ChangeNotifier {
         _serverUrl = _orDefault(prefs.getString(_kServer), defaultServerUrl),
         _interests = List.of(prefs.getStringList(_kInterests) ?? const <String>[]),
         _askTarget = AskTarget.fromName(prefs.getString(_kAsk)),
-        _textScale = _validScale(prefs.getDouble(_kTextScale));
+        _textScale = _validScale(prefs.getDouble(_kTextScale)),
+        _language = prefs.getString(_kLanguage) == 'en' ? 'en' : 'ko' {
+    AppLang.english = _language == 'en';
+  }
 
   static const _kServer = 'settings:server_url';
   static const _kInterests = 'settings:interests';
   static const _kAsk = 'settings:ask_target';
   static const _kTextScale = 'settings:text_scale';
+  static const _kLanguage = 'settings:language';
 
   /// BR-A25: 글자 크기 배율.
   static const textScales = <double>[0.9, 1.0, 1.15, 1.3];
@@ -45,8 +50,15 @@ class SettingsStore extends ChangeNotifier {
   List<String> _interests;
   AskTarget _askTarget;
   double _textScale;
+  String _language;
 
   String get serverUrl => _serverUrl;
+
+  /// BR-A30: 'ko' (기본) · 'en'.
+  String get language => _language;
+
+  /// 내용을 다시 받아야 하는지 판단하는 값 (서버 주소 · 언어).
+  String get sourceKey => '$_serverUrl|$_language';
   String get defaultServerUrl => _defaultServerUrl;
   double get textScale => _textScale;
   bool get configured => _serverUrl.isNotEmpty;
@@ -62,13 +74,26 @@ class SettingsStore extends ChangeNotifier {
     if (url.isNotEmpty) {
       final uri = Uri.tryParse(url);
       final ok = uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty;
-      if (!ok || url.length > 300) return 'http:// 또는 https:// 로 시작하는 주소를 입력하세요';
+      if (!ok || url.length > 300) {
+        return tr('http:// 또는 https:// 로 시작하는 주소를 입력하세요', 'Enter an address starting with http:// or https://');
+      }
     }
     _serverUrl = _orDefault(url, _defaultServerUrl);
     await prefs.setString(_kServer, url);
     notifyListeners();
     return null;
   }
+
+  Future<void> setLanguage(String value) async {
+    final lang = value == 'en' ? 'en' : 'ko';
+    if (lang == _language) return;
+    _language = lang;
+    AppLang.english = lang == 'en';
+    await prefs.setString(_kLanguage, lang);
+    notifyListeners();
+  }
+
+  Future<void> toggleLanguage() => setLanguage(_language == 'en' ? 'ko' : 'en');
 
   Future<void> setTextScale(double value) async {
     _textScale = _validScale(value);

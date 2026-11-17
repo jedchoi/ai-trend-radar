@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../format.dart';
+import '../../l10n/strings.dart';
 
 /// 주제별 편수 막대 + 직전 기간 대비 증감 (BR-A09).
 class TopicBars extends StatelessWidget {
@@ -28,7 +29,7 @@ class TopicBars extends StatelessWidget {
                 children: [
                   Row(children: [
                     Expanded(child: Text(r.topic.label, style: text.bodySmall, overflow: TextOverflow.ellipsis)),
-                    Text('${r.count}편', style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(tr('${r.count}편', '${r.count}'), style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 44,
@@ -62,9 +63,9 @@ class TopicBars extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           Row(children: [
-            _legend(context, scheme.primary, '이번 기간'),
+            _legend(context, scheme.primary, tr('이번 기간', 'This period')),
             const SizedBox(width: 12),
-            _legend(context, scheme.primary.withValues(alpha: 0.25), '직전 기간'),
+            _legend(context, scheme.primary.withValues(alpha: 0.25), tr('직전 기간', 'Previous period')),
           ]),
         ],
       ),
@@ -93,7 +94,9 @@ class TopicLines extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final label = Theme.of(context).textTheme.labelSmall;
     if (topics.isEmpty || series.weeks.length < 2) {
-      return const Padding(padding: EdgeInsets.all(16), child: Text('추이를 그릴 데이터가 아직 부족합니다'));
+      return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(tr('추이를 그릴 데이터가 아직 부족합니다', 'Not enough data for a trend yet')));
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -311,6 +311,46 @@ class Runner:
         print(f"뉴스 {sent}건 올림 (기간 {days}일, AI 대체 {fallbacks}건)")
         return EXIT_OK
 
+    # ---------- 번역 (FR-35, BR-P40 ~ BR-P45) ----------
+
+    def run_translate(self, days: int | None = None, max_minutes: int | None = None) -> int:
+        """서버의 원본을 읽어 반대 언어 번역을 미리 올린다. AI 가 없으면 건너뛴다."""
+        from radar.translate import Translator
+
+        cfg = self.config.translate
+        if not cfg.enabled:
+            return EXIT_OK
+        if self.analyzer.provider is None:
+            print("번역 건너뜀: AI 제공자가 없습니다 (provider = none)")
+            return EXIT_OK
+        started = time.monotonic()
+        translator = Translator(
+            self.analyzer.provider,
+            self.server,
+            self.data / "translated.json",
+            chunk_chars=cfg.chunk_chars,
+            full_text=cfg.full_text,
+            max_minutes=cfg.max_minutes if max_minutes is None else max_minutes,
+        )
+        try:
+            result = translator.run(days or cfg.days, self.today_kst())
+        except Exception as exc:  # noqa: BLE001 - 번역 실패는 기록만 (논문 · 뉴스 결과와 별개)
+            self._record(stage="translate", status="failed", provider=self.analyzer.provider_name, error=str(exc)[:300])
+            print(f"번역 실패: {exc}")
+            return EXIT_FAILED
+        self._record(
+            stage="translate",
+            status="ok",
+            provider=self.analyzer.provider_name,
+            translations=result["done"],
+            failed=result["failed"],
+            stopped=result["stopped"],
+            duration_s=round(time.monotonic() - started, 2),
+        )
+        stopped = ", 시간 상한으로 멈춤" if result["stopped"] else ""
+        print(f"번역 {result['done']}건 올림 (실패 {result['failed']}건{stopped})")
+        return EXIT_OK
+
     # ---------- 리포트 ----------
 
     def due_reports(self) -> list[tuple[str, str]]:
@@ -482,6 +522,9 @@ class Runner:
         # 3단계
         if reports and self._backfill_reports(dates) != EXIT_OK:
             failed += 1
+
+        # 번역 (3주기): 채운 기간 전체, 짧은 항목 먼저
+        self.run_translate(days=(self.today_kst() - dates[0]).days + 1)
         return EXIT_FAILED if failed else EXIT_OK
 
     def _backfill_reports(self, dates: list[dt.date]) -> int:

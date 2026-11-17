@@ -4,17 +4,21 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
+import '../l10n/strings.dart';
 
 /// 보관함 상태 (BR-A11).
 enum LibraryStatus {
-  toRead('읽을 것'),
-  trying('시험 중'),
-  applied('적용함'),
-  onHold('보류');
+  toRead('읽을 것', 'To read'),
+  trying('시험 중', 'Trying'),
+  applied('적용함', 'Applied'),
+  onHold('보류', 'On hold');
 
-  const LibraryStatus(this.label);
+  const LibraryStatus(this.labelKo, this.labelEn);
 
-  final String label;
+  final String labelKo;
+  final String labelEn;
+
+  String get label => tr(labelKo, labelEn);
 
   static LibraryStatus fromName(String? name) =>
       LibraryStatus.values.firstWhere((s) => s.name == name, orElse: () => LibraryStatus.toRead);

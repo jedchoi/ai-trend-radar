@@ -1,5 +1,6 @@
 import 'json.dart';
 import 'topic.dart';
+import '../l10n/strings.dart';
 
 export 'news.dart';
 export 'topic.dart';
@@ -101,6 +102,7 @@ class Paper {
     this.arxivUrl,
     this.fullText,
     this.hasFullText = false,
+    this.untranslated = false,
   });
 
   final String id;
@@ -131,6 +133,9 @@ class Paper {
   /// 서버에 본문 원문이 있는지 (일일 요약 응답에서도 알 수 있음).
   final bool hasFullText;
 
+  /// 고른 언어의 번역이 아직 없음 (BR-A34).
+  final bool untranslated;
+
   bool get hasCode => githubUrl != null;
   bool get abstractBased => detail == null;
 
@@ -158,6 +163,7 @@ class Paper {
       arxivUrl: strOrNull(j, 'arxiv_url'),
       fullText: strOrNull(j, 'full_text'),
       hasFullText: boolean(j, 'has_full_text') || strOrNull(j, 'full_text') != null,
+      untranslated: boolean(j, 'untranslated'),
     );
   }
 
@@ -174,14 +180,17 @@ class Paper {
 }
 
 enum HubKind {
-  model('model', '모델'),
-  dataset('dataset', '데이터셋'),
-  space('space', 'Spaces');
+  model('model', '모델', 'Models'),
+  dataset('dataset', '데이터셋', 'Datasets'),
+  space('space', 'Spaces', 'Spaces');
 
-  const HubKind(this.slug, this.label);
+  const HubKind(this.slug, this.labelKo, this.labelEn);
 
   final String slug;
-  final String label;
+  final String labelKo;
+  final String labelEn;
+
+  String get label => tr(labelKo, labelEn);
 
   static HubKind fromSlug(String? slug) =>
       HubKind.values.firstWhere((k) => k.slug == slug, orElse: () => HubKind.model);
@@ -224,13 +233,21 @@ class HubItem {
 }
 
 class Digest {
-  const Digest({required this.date, required this.headline, required this.provider, required this.papers, required this.hub});
+  const Digest({
+    required this.date,
+    required this.headline,
+    required this.provider,
+    required this.papers,
+    required this.hub,
+    this.untranslated = false,
+  });
 
   final String date;
   final List<String> headline;
   final String provider;
   final List<Paper> papers;
   final List<HubItem> hub;
+  final bool untranslated;
 
   List<Paper> get featured => papers.where((p) => p.featured).toList(growable: false);
 
@@ -243,6 +260,7 @@ class Digest {
         provider: str(j, 'provider', 'none'),
         papers: list(j, 'papers', Paper.fromJson),
         hub: list(j, 'hub', HubItem.fromJson),
+        untranslated: boolean(j, 'untranslated'),
       );
 }
 
@@ -348,6 +366,7 @@ class TrendReport {
     required this.hubNew,
     required this.hubSteady,
     this.narrative,
+    this.untranslated = false,
   });
 
   final String period;
@@ -362,6 +381,7 @@ class TrendReport {
   final List<HubNew> hubNew;
   final List<HubSteady> hubSteady;
   final String? narrative;
+  final bool untranslated;
 
   factory TrendReport.fromJson(Json j) => TrendReport(
         period: str(j, 'period', 'week'),
@@ -376,6 +396,7 @@ class TrendReport {
         hubNew: list(j, 'hub_new', HubNew.fromJson),
         hubSteady: list(j, 'hub_steady', HubSteady.fromJson),
         narrative: strOrNull(j, 'narrative'),
+        untranslated: boolean(j, 'untranslated'),
       );
 }
 

@@ -307,3 +307,17 @@
 **Context**: 3주기 Requirements Analysis 시작 (확인 질문 답변 = requirements.md 3주기 절의 근거)
 
 ---
+## Requirements · Stories · Design (3주기)
+**Timestamp**: 2026-11-18T00:45:00Z
+**User Input**: (확인 질문 답 + 사용자 위임)
+**AI Response**: "requirements.md 3주기: FR-32 ~ FR-37, NFR-13 ~ NFR-15. stories.md Epic G: US-28 ~ US-31. construction/cycle3-design.md: translations 표 (kind · key · lang → fields, 키 단위 합치기), 조회 API lang 매개변수 · untranslated, 번역 검색 (search_i18n), 파이프라인 Translator (서버 원본을 읽어 짧은 것 → 긴 본문, 해시로 한 번만, 시간 상한), 앱 tr(한, 영) · 언어 버튼 · lang 요청"
+**Context**: Workflow Planning · Application Design · Units Generation SKIP (unit 구성 같음)
+
+---
+## Code Generation · Build and Test (3주기)
+**Timestamp**: 2026-11-18T01:50:00Z
+**User Input**: (사용자 위임)
+**AI Response**: "TDD: server test_i18n.py RED (8 중 대부분 실패 확인) → GREEN 96 passed. pipeline test_translate.py 10 + CLI 1 → 127 passed. 통합 5 passed. 예시 응답에 언어별 7개. 앱: 화면 글자 약 230곳 tr(한, 영), Topic · 보관 상태 · Hub 종류 · 날짜 표기 언어별, LanguageRebuilder, 언어 버튼 (오늘 · 논문 · 뉴스 상세), 저장본 경로에 lang. 기존 앱 테스트 4곳 기대값을 lang 경로 · 한국어 번역 예시에 맞게 갱신 (사양 변경). tool/radar-daily.sh: --translate N, 매일 실행 앞에 서버 최신 코드 반영 (radar-up.sh --server-only)"
+**Context**: ⚠️ 앱 컴파일 · 테스트와 실제 AI 번역은 사용자 Mac 필요
+
+---

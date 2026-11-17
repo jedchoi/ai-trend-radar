@@ -3,7 +3,7 @@
 ## Project Information
 - **Project Type**: Greenfield
 - **Start Date**: 2026-11-17T12:56:49Z
-- **Current Stage**: 2주기 완료 — Construction · Build and Test · Operations 문서화 끝, 사용자 Mac 실행 대기 (`handoff.md`)
+- **Current Stage**: 3주기 (한국어 · 영어) 완료 — 사용자 Mac 에서 서버 갱신 · 번역 채우기 · 앱 재설치 대기 (`handoff.md`)
 - **Cycle**: 2 (2026-11-17T16:20:00Z 요청: Postgres · 뉴스 · 원문 · 06:00 · 설치 즉시 동작 · 앱 개선 · 인계 문서)
 
 ## Workspace State
@@ -81,6 +81,17 @@ unit 순서: backend-server → pc-pipeline → mobile-app (`aidlc-docs/inceptio
 - [x] Build and Test - Completed on 2026-11-17T17:50:00Z (앱 테스트 · Docker · launchd 실제 실행은 사용자 Mac)
 - [x] Traceability Check (cycle 2) - `verification/phase-check-cycle2.md` GAP 0 · ORPHAN 0
 - [x] Operations 문서 갱신 (deployment-execution, observability, deploy/server README) + `handoff.md`
+
+### 🔁 3주기 (Cycle 3) — 2026-11-18, 한국어 · 영어 전환
+- [x] Requirements Analysis (FR-32 ~ FR-37, NFR-13 ~ NFR-15, 확인 질문 3개 답) - Completed on 2026-11-18T00:40:00Z
+- [x] User Stories (US-28 ~ US-31) - Completed on 2026-11-18T00:40:00Z
+- [ ] Workflow Planning · Application Design · Units Generation - SKIP (unit 구성 같음, 새 컴포넌트 C-S8 Localizer · C-P10 Translator 는 설계 문서에 기록)
+- [x] Functional · NFR · Infrastructure Design (`construction/cycle3-design.md`) - Completed on 2026-11-18T00:45:00Z
+- [x] Code Generation (server: 번역 표 · lang 조회 · 번역 검색) - Completed on 2026-11-18T01:00:00Z
+- [x] Code Generation (pipeline: Translator · 프롬프트 2개 · translate 명령 · 매일 · 백필 연결) - Completed on 2026-11-18T01:15:00Z
+- [x] Code Generation (app: 화면 글자 두 언어 · 언어 버튼 · lang 요청 · 번역 준비 중) - Completed on 2026-11-18T01:45:00Z
+- [x] Build and Test - Completed on 2026-11-18T01:50:00Z (앱 · 실제 번역은 사용자 Mac)
+- [x] Traceability Check (`verification/phase-check-cycle3.md`) GAP 0 · ORPHAN 0
 
 ## Execution Plan Summary
 - **Total Stages**: 27 (INCEPTION 7, CONSTRUCTION 16, OPERATIONS 7 중 EXECUTE 21)

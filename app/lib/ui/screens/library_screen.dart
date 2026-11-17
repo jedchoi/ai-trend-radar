@@ -6,6 +6,7 @@ import '../format.dart';
 import '../widgets/common.dart';
 import 'news_detail_screen.dart';
 import 'paper_screen.dart';
+import '../../l10n/strings.dart';
 
 /// 보관함 (US-13, BR-A11).
 class LibraryScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Wrap(spacing: 6, runSpacing: 6, children: [
                 ChoiceChip(
-                  label: Text('전체 ${library.items().length}'),
+                  label: Text(tr('전체 ${library.items().length}', 'All ${library.items().length}')),
                   selected: _filter == null,
                   onSelected: (_) => setState(() => _filter = null),
                 ),
@@ -45,23 +46,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ]),
             ),
             if (entries.isEmpty)
-              const EmptyNote('저장한 논문이 없습니다. 논문 · 뉴스 화면의 책갈피 버튼으로 저장하세요.'),
+              EmptyNote(tr('저장한 논문이 없습니다. 논문 · 뉴스 화면의 책갈피 버튼으로 저장하세요.',
+                  'Nothing saved yet. Use the bookmark button on a paper or news page.')),
             for (final e in entries)
               ListTile(
                 leading: Container(width: 4, height: 40, color: e.paper.topic.color),
                 title: Text(e.paper.title, maxLines: 2, overflow: TextOverflow.ellipsis),
                 subtitle: Text(
                   [
-                    if (e.kind == LibraryKind.news) '뉴스',
+                    if (e.kind == LibraryKind.news) tr('뉴스', 'News'),
                     e.status.label,
                     if (e.paper.date.isNotEmpty) shortDay(e.paper.date),
-                    if (e.note.isNotEmpty) '메모: ${e.note}',
+                    if (e.note.isNotEmpty) tr('메모: ${e.note}', 'Note: ${e.note}'),
                   ].join(' · '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 trailing: IconButton(
-                  tooltip: '상태 · 메모 편집',
+                  tooltip: tr('상태 · 메모 편집', 'Edit status · note'),
                   icon: const Icon(Icons.edit_note),
                   onPressed: () => _edit(context, library, e),
                 ),
@@ -133,9 +135,11 @@ class _EditSheetState extends State<_EditSheet> {
             controller: _note,
             maxLength: LibraryStore.maxNote,
             maxLines: 4,
-            decoration: const InputDecoration(labelText: '메모 (어디에 쓸지, 시험 결과 등)', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+                labelText: tr('메모 (어디에 쓸지, 시험 결과 등)', 'Note (where to use it, test results, ...)'),
+                border: const OutlineInputBorder()),
           ),
-          Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: _save, child: const Text('저장'))),
+          Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: _save, child: Text(tr('저장', 'Save')))),
         ],
       ),
     );

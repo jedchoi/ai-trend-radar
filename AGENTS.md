@@ -10,7 +10,8 @@ AI 코딩 에이전트 (Claude Code, Codex CLI, Gemini CLI, Cursor 등) 공통 �
 tool/check.sh                                   # 전체 점검 (CI 와 같음, 테스트 Postgres 는 tool/test-db.sh 로 자동)
 tool/radar-up.sh                                # Docker Desktop: Postgres + API → 90일 채우기 → 06:00 일정 → 앱 설치
 tool/radar-up.sh --server-only | --status | --logs | --stop | --backup | --psql
-tool/radar-daily.sh                             # 06:00 일정이 부르는 실행 (어제 + 빠진 날 + 새 뉴스 + 리포트)
+tool/radar-daily.sh                             # 06:00 일정이 부르는 실행 (서버 갱신 → 어제 + 빠진 날 + 새 뉴스 + 리포트 + 번역)
+tool/radar-daily.sh --translate 90              # 지난 90일 한국어 · 영어 번역 채우기 (시간 상한 없음)
 tool/test-db.sh [--stop]                        # 테스트용 Postgres (127.0.0.1:55432, 메모리)
 tool/build-apk.sh [--server-url URL] [--install] # 릴리즈 APK (서버 주소 내장, http 주소면 그 빌드만 http 허용) → dist/
 tool/local-backfill.sh [--days 90]              # 로컬 서버에 지난 N 일 실제 데이터 (radar backfill)
@@ -27,6 +28,7 @@ cd server && python -m tools.make_samples       # 계약 예시 갱신 (앱 테�
 
 - 세 unit 을 잇는 계약은 서버 API 하나다. 정본 = `server/app/schemas.py`. 필드는 추가만 한다 (`/api/v1`). 바꾸면 `pipeline/radar/models.py` · `pipeline/radar/news.py`, `app/lib/models/`, `contract/samples/` 를 같은 커밋에서 맞춘다 (`pipeline/tests/test_contract.py` · `test_news.py`, CI 의 samples diff 가 검사)
 - 저장소는 PostgreSQL (`server/app/repository.py`, psycopg 3). 스키마는 시작할 때 `CREATE ... IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` 로 맞춘다 (마이그레이션 도구 없음, 열은 추가만)
+- 앱 화면 글자는 `tr('한국어', 'English')` (`app/lib/l10n/strings.dart`) 로 두 언어를 함께 쓴다. 내용 번역은 서버 `translations` 표 (파이프라인 `radar translate` 가 채움), 앱은 요청에 `lang` 을 붙인다
 - AI 호출은 `pipeline/radar/providers.py` 의 `complete(system, user) -> str` 하나로만 한다. 프롬프트는 `pipeline/radar/prompts/*.md` (첫 줄 = 작업 이름, `---USER---` 아래 = 사용자 메시지 틀)
 - 트렌드 통계는 서버가 계산한다 (`server/app/trends.py`). 파이프라인은 해석 문장만 올린다
 - 비밀 (업로드 토큰, AI 키) 은 저장소 · 설정 파일 · 로그에 두지 않는다. PC = 키체인, 서버 = `.env` 의 토큰 해시

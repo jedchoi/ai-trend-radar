@@ -10,6 +10,8 @@ import '../format.dart';
 import '../widgets/common.dart';
 import '../widgets/links.dart';
 import '../widgets/original_text.dart';
+import '../../l10n/strings.dart';
+import '../widgets/language_button.dart';
 
 /// 뉴스 상세 (US-22, AC-22-2): 한국어 요약 · 핵심 · 키워드 → 원문 본문 전체.
 class NewsDetailScreen extends StatefulWidget {
@@ -23,6 +25,7 @@ class NewsDetailScreen extends StatefulWidget {
 
 class _NewsDetailScreenState extends State<NewsDetailScreen> {
   LoadController<News>? _c;
+  String? _lang;
 
   @override
   void didChangeDependencies() {
@@ -44,12 +47,19 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   Future<void> _copyLink(News n) async {
     final messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: '${n.brief.title}\n${n.brief.url}'));
-    messenger.showSnackBar(const SnackBar(content: Text('제목과 링크를 복사했습니다')));
+    messenger.showSnackBar(SnackBar(content: Text(tr('제목과 링크를 복사했습니다', 'Copied the title and link'))));
   }
 
   @override
   Widget build(BuildContext context) {
     final services = Services.of(context);
+    final lang = services.settings.language;
+    if (_lang != null && _lang != lang) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _c!.load(); // BR-A30
+      });
+    }
+    _lang = lang;
     return ListenableBuilder(
       listenable: Listenable.merge([_c!, services.library]),
       builder: (context, _) {
@@ -58,21 +68,22 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         final saved = news != null && services.library.contains(news.id, kind: LibraryKind.news);
         return Scaffold(
           appBar: AppBar(
-            title: const Text('뉴스'),
+            title: Text(tr('뉴스', 'News')),
             actions: [
+              const LanguageButton(),
               if (news != null) ...[
                 IconButton(
-                  tooltip: saved ? '보관함에서 빼기' : '보관함에 저장',
+                  tooltip: saved ? tr('보관함에서 빼기', 'Remove from library') : tr('보관함에 저장', 'Save to library'),
                   icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
                   onPressed: () => services.library.toggle(newsAsBrief(news.brief), kind: LibraryKind.news),
                 ),
-                IconButton(tooltip: '링크 복사', icon: const Icon(Icons.link), onPressed: () => _copyLink(news)),
+                IconButton(tooltip: tr('링크 복사', 'Copy link'), icon: const Icon(Icons.link), onPressed: () => _copyLink(news)),
               ],
             ],
           ),
           body: switch (c.status) {
             LoadStatus.loading when c.data == null => const Center(child: CircularProgressIndicator()),
-            LoadStatus.error when c.data == null => ErrorView(message: c.error ?? '오류', onRetry: c.load),
+            LoadStatus.error when c.data == null => ErrorView(message: c.error ?? tr('오류', 'Error'), onRetry: c.load),
             _ => _body(context, c.data!, c.offline),
           },
         );
@@ -96,6 +107,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               TopicChip(b.topic),
               if (b.day.isNotEmpty) Text(dayLabel(b.day), style: text.labelSmall),
               if (b.organization != null) Text(b.organization!, style: text.labelSmall),
+              if (n.untranslated) const PendingTranslation(),
             ]),
             const SizedBox(height: 10),
             Text(b.title, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.3)),
@@ -113,9 +125,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             Row(children: [
               Icon(Icons.auto_awesome_outlined, size: 18, color: scheme.onPrimaryContainer),
               const SizedBox(width: 6),
-              Text('요약', style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Text(tr('요약', 'Summary'), style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
               const Spacer(),
-              Text(n.aiSummary ? 'AI 요약' : '본문 첫 문단',
+              Text(n.aiSummary ? tr('AI 요약', 'AI summary') : tr('본문 첫 문단', 'First paragraph'),
                   style: text.labelSmall?.copyWith(color: scheme.onPrimaryContainer.withValues(alpha: 0.7))),
             ]),
             const SizedBox(height: 6),
@@ -123,7 +135,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
           ]),
         ),
         if (n.keyPoints.isNotEmpty) ...[
-          const SectionTitle('핵심'),
+          SectionTitle(tr('핵심', 'Key points')),
           for (final point in n.keyPoints)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
@@ -143,12 +155,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: OutlinedButton.icon(
             icon: const Icon(Icons.open_in_new),
-            label: const Text('Hugging Face 에서 원문 열기'),
+            label: Text(tr('Hugging Face 에서 원문 열기', 'Open on Hugging Face')),
             onPressed: () => openLink(context, b.url),
           ),
         ),
-        SectionTitle('원문', subtitle: n.content.isEmpty ? null : '${compact(n.content.length)}자 · 영어 원문 그대로'),
-        if (blocks.isEmpty) const EmptyNote('저장된 본문이 없습니다. 위의 버튼으로 원문을 여세요.'),
+        SectionTitle(originalTitle(translated: !n.untranslated && AppLang.english == false),
+            subtitle: n.content.isEmpty ? null : originalSubtitle(n.content.length, translated: !n.untranslated)),
+        if (blocks.isEmpty) EmptyNote(tr('저장된 본문이 없습니다. 위의 버튼으로 원문을 여세요.', 'No stored body. Open the original with the button above.')),
         for (final block in blocks) OriginalBlock(block),
       ],
     );

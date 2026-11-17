@@ -1,4 +1,4 @@
-"""명령 (C-P9): radar daily | backfill | news | report | check | token"""
+"""명령 (C-P9): radar daily | backfill | news | translate | report | check | token"""
 
 from __future__ import annotations
 
@@ -56,6 +56,9 @@ def parser() -> argparse.ArgumentParser:
     b.add_argument("--no-reports", action="store_true", help="주 · 월 리포트를 만들지 않음")
     n = sub.add_parser("news", help="Hugging Face 블로그 새 글 → 본문 원문 → 분석 → 업로드")
     n.add_argument("--days", type=_days, default=3, help="며칠 안의 글 (1~120, 기본 3)")
+    t = sub.add_parser("translate", help="서버의 논문 · 뉴스 · 리포트를 한국어 · 영어로 미리 번역해 올림 (이어서 실행)")
+    t.add_argument("--days", type=_days, default=None, help="며칠 치 (기본: 설정 [translate] days)")
+    t.add_argument("--max-minutes", type=int, default=None, help="시간 상한 (분, 0 = 무제한)")
     sub.add_parser("report", help="오늘이 월요일 · 1일이면 주간 · 월간 리포트 문장 업로드")
     c = sub.add_parser("check", help="설정 · 키 · 서버 연결 확인")
     c.add_argument("--offline", action="store_true", help="서버 연결은 확인하지 않음")
@@ -122,6 +125,11 @@ def main(argv: list[str] | None = None) -> int:
         for problem in problems:
             print(f"설정 문제: {problem}")
         return EXIT_CONFIG if problems else built.run_news(args.days)
+    if args.command == "translate":
+        problems = built.config_problems()
+        for problem in problems:
+            print(f"설정 문제: {problem}")
+        return EXIT_CONFIG if problems else built.run_translate(args.days, args.max_minutes)
     if args.command == "backfill":
         return built.run_backfill(days=args.days, until=args.until, reports=not args.no_reports)
     code = built.run_daily(
@@ -129,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     if code == EXIT_OK and not args.dry_run:
         built.run_reports()
+        built.run_translate()  # BR-P45: 논문 → 뉴스 → 리포트 → 번역
     return code
 
 

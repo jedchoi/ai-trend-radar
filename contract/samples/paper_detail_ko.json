@@ -1,0 +1,90 @@
+{
+  "paper": {
+    "id": "2611.10439",
+    "title": "누가 무엇을 기억하나? 다중 사용자 · 다중 에이전트 대화를 위한 다층 기억 추출",
+    "authors": [
+      "B. Researcher"
+    ],
+    "abstract": "(예시 번역) 여러 사용자와 에이전트가 함께하는 대화에서 기억을 나눠 추출한다.",
+    "published_at": null,
+    "upvotes": 11,
+    "topic": "agents",
+    "keywords": [
+      "agent",
+      "memory",
+      "multi-agent"
+    ],
+    "one_liner": "여러 사용자 · 여러 에이전트 대화에서 누가 무엇을 기억해야 하는지 나눠 저장하는 메모리 추출 방법",
+    "featured": true,
+    "detail": {
+      "what": "대화에서 개인 · 그룹 · 에이전트 단위 기억을 따로 뽑아 저장하는 방법을 제안했다.",
+      "novelty": "기억의 주인과 범위를 명시적으로 나눈다.",
+      "why": "팀용 챗봇에서 다른 사람의 정보가 섞여 답하는 문제를 줄인다.",
+      "apply": "사내 비서 봇의 메모리를 사용자 · 팀 단위 키로 분리 저장하는 설계에 참고할 수 있다."
+    },
+    "glossary": [],
+    "github_url": null,
+    "github_stars": null,
+    "project_url": null,
+    "organization": null,
+    "summary_source": "ai",
+    "full_text": "1 서론\n\n(예시 번역 본문)\n\n2 방법\n\n(예시 번역 본문)",
+    "date": "2026-11-13",
+    "hf_url": "https://huggingface.co/papers/2611.10439",
+    "arxiv_url": "https://arxiv.org/abs/2611.10439",
+    "has_full_text": true,
+    "untranslated": false
+  },
+  "related": [
+    {
+      "id": "2611.17167",
+      "title": "Actor, Judge, or Teacher? Understanding Decision Models in Long-Horizon Agents",
+      "date": "2026-11-13",
+      "topic": "agents",
+      "one_liner": "긴 작업을 하는 에이전트에서 판단 모델을 행동자 · 심판 · 교사 중 어디에 쓰는 게 나은지 비교",
+      "upvotes": 36,
+      "featured": true,
+      "github_url": null
+    },
+    {
+      "id": "2611.16961",
+      "title": "The Value of Thinking: Learning When to Reason in Hybrid Decision Models",
+      "date": "2026-11-13",
+      "topic": "llm-reasoning",
+      "one_liner": "언제 길게 생각하고 언제 바로 답할지 학습하는 하이브리드 모델",
+      "upvotes": 9,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "2611.08219",
+      "title": "Agent-R^2: Scaling Agents for Realistic Productivity Work via Real-Source Data Synthesis",
+      "date": "2026-11-13",
+      "topic": "agents",
+      "one_liner": "실제 업무 자료로 합성한 데이터로 생산성 에이전트를 확장",
+      "upvotes": 8,
+      "featured": false,
+      "github_url": null
+    },
+    {
+      "id": "261112.00000",
+      "title": "Study on video and moe (2026-11-12 #0)",
+      "date": "2026-11-12",
+      "topic": "image-video-gen",
+      "one_liner": "video · moe 관련 예시 논문",
+      "upvotes": 24,
+      "featured": true,
+      "github_url": null
+    },
+    {
+      "id": "261112.00003",
+      "title": "Study on rl and agent (2026-11-12 #3)",
+      "date": "2026-11-12",
+      "topic": "robotics-physical",
+      "one_liner": "rl · agent 관련 예시 논문",
+      "upvotes": 23,
+      "featured": false,
+      "github_url": null
+    }
+  ]
+}

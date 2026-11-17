@@ -9,6 +9,7 @@ import '../../services.dart';
 import '../widgets/common.dart';
 import '../widgets/news_widgets.dart';
 import 'news_detail_screen.dart';
+import '../../l10n/strings.dart';
 
 /// 뉴스 탭 (US-22): Hugging Face 블로그 최신순, 검색, 당겨서 새로고침, 끝까지 내리면 다음 페이지 (BR-A22).
 class NewsScreen extends StatefulWidget {
@@ -37,14 +38,14 @@ class _NewsScreenState extends State<NewsScreen> {
       final services = Services.of(context);
       _repo = services.repository;
       _settings = services.settings;
-      _serverUrl = services.settings.serverUrl;
+      _serverUrl = services.settings.sourceKey;
       services.settings.addListener(_onSettings);
       _load();
     }
   }
 
   void _onSettings() {
-    final url = _settings!.serverUrl;
+    final url = _settings!.sourceKey;
     if (url != _serverUrl) {
       _serverUrl = url;
       _load();
@@ -74,9 +75,9 @@ class _NewsScreenState extends State<NewsScreen> {
         _offline = result.offline;
       });
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.notFound ? '아직 뉴스가 없습니다' : e.message);
+      if (mounted) setState(() => _error = e.notFound ? tr('아직 뉴스가 없습니다', 'No news yet') : e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = '뉴스를 불러오지 못했습니다');
+      if (mounted) setState(() => _error = tr('뉴스를 불러오지 못했습니다', 'Could not load news'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -112,27 +113,31 @@ class _NewsScreenState extends State<NewsScreen> {
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) => _load(),
                   decoration: InputDecoration(
-                    hintText: '뉴스 검색 (제목 · 요약 · 본문)',
+                    hintText: tr('뉴스 검색 (제목 · 요약 · 본문)', 'Search news (title · summary · body)'),
                     prefixIcon: const Icon(Icons.search),
                     counterText: '',
                     border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(tooltip: '뉴스 검색', icon: const Icon(Icons.arrow_forward), onPressed: _load),
+                    suffixIcon:
+                        IconButton(tooltip: tr('뉴스 검색', 'Search news'), icon: const Icon(Icons.arrow_forward), onPressed: _load),
                   ),
                 ),
               ),
               if (_offline) const SourceBanner(offline: true),
-              SectionTitle('Hugging Face 소식', subtitle: _total > 0 ? '블로그 글 $_total건 · 최신순' : '블로그 글 · 최신순'),
+              SectionTitle(tr('Hugging Face 소식', 'Hugging Face news'),
+                  subtitle: _total > 0
+                      ? tr('블로그 글 $_total건 · 최신순', '$_total blog posts · newest first')
+                      : tr('블로그 글 · 최신순', 'Blog posts · newest first')),
               if (_error != null && _items.isEmpty) ...[
                 EmptyNote(_error!),
-                Center(child: FilledButton.tonal(onPressed: _load, child: const Text('다시 시도'))),
+                Center(child: FilledButton.tonal(onPressed: _load, child: Text(tr('다시 시도', 'Retry')))),
               ],
-              if (_error == null && !_loading && _items.isEmpty) const EmptyNote('조건에 맞는 뉴스가 없습니다'),
+              if (_error == null && !_loading && _items.isEmpty) EmptyNote(tr('조건에 맞는 뉴스가 없습니다', 'No matching news')),
               for (final n in _items)
                 NewsTile(news: n, read: reads.isRead(ReadStore.news(n.id)), onTap: () => _open(n)),
               if (_loading)
                 const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
               if (!_loading && _items.length < _total)
-                Center(child: TextButton(onPressed: () => _load(more: true), child: const Text('더 보기'))),
+                Center(child: TextButton(onPressed: () => _load(more: true), child: Text(tr('더 보기', 'More')))),
             ],
           ),
         ),

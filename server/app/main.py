@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import logging_setup
 from app.config import Settings
+from app.i18n import Localizer
 from app.middleware import GuardMiddleware, RateLimiter
 from app.repository import Repository
 from app.routes_ingest import router as ingest_router
@@ -51,6 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.repo = Repository(settings.database_url, pool_size=settings.db_pool_size)
     app.state.trends = TrendService(app.state.repo)
+    app.state.i18n = Localizer(app.state.repo)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:

@@ -68,6 +68,29 @@ class ServerClient:
             sent += len(batch)
         return sent
 
+    def upload_translations(self, items: list[dict], provider: str) -> int:
+        """BR-S41: 번역 묶음 (최대 50건) 업로드."""
+        import json
+
+        body = json.dumps({"provider": provider, "items": items}, ensure_ascii=False)
+        response = self._request("POST", "/api/v1/ingest/translations", body)
+        if response.status_code != 200:
+            raise UploadError(f"번역 업로드 실패: HTTP {response.status_code}", response.status_code)
+        return len(items)
+
+    def get_json(self, path: str, params: dict | None = None, missing_ok: bool = False) -> dict | None:
+        """공개 조회 API (번역 단계가 원본을 읽을 때)."""
+        if params:
+            from urllib.parse import urlencode
+
+            path = f"{path}?{urlencode(params)}"
+        response = self._request("GET", path)
+        if response.status_code == 404 and missing_ok:
+            return None
+        if response.status_code != 200:
+            raise UploadError(f"조회 실패 {path}: HTTP {response.status_code}", response.status_code)
+        return response.json()
+
     def upload_report(self, period: str, key: str, narrative: str, provider: str) -> None:
         import json
 

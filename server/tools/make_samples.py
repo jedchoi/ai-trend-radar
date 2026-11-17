@@ -270,6 +270,9 @@ def build(client: TestClient) -> None:
     client.post(
         "/api/v1/ingest/news", json={"provider": "anthropic", "items": NEWS}, headers=headers
     ).raise_for_status()
+    client.post(
+        "/api/v1/ingest/translations", json={"provider": "anthropic", "items": TRANSLATIONS}, headers=headers
+    ).raise_for_status()
 
 
 # 2026-11-12 ~ 13 Hugging Face 블로그의 실제 제목 · 주소. 본문 · 요약은 예시로 작성한 것
@@ -315,6 +318,74 @@ NEWS = [
     },
 ]
 
+# 3주기: 미리 번역해 둔 값 (예시로 작성)
+TRANSLATIONS = [
+    {
+        "kind": "paper",
+        "key": "2611.10439",
+        "lang": "ko",
+        "fields": {
+            "title": "누가 무엇을 기억하나? 다중 사용자 · 다중 에이전트 대화를 위한 다층 기억 추출",
+            "abstract": "(예시 번역) 여러 사용자와 에이전트가 함께하는 대화에서 기억을 나눠 추출한다.",
+            "full_text": "1 서론\n\n(예시 번역 본문)\n\n2 방법\n\n(예시 번역 본문)",
+        },
+    },
+    {
+        "kind": "paper",
+        "key": "2611.10439",
+        "lang": "en",
+        "fields": {
+            "one_liner": "A memory extraction method that separates who should remember what "
+            "in multi-user, multi-agent chats",
+            "detail": {
+                "what": "Proposes extracting personal, group and agent-level memories separately from conversations.",
+                "novelty": "Makes the owner and scope of each memory explicit.",
+                "why": "Reduces team chatbots mixing up other people's information.",
+                "apply": "Useful when designing per-user and per-team memory keys for an internal assistant bot.",
+            },
+        },
+    },
+    {
+        "kind": "digest",
+        "key": "2026-11-13",
+        "lang": "en",
+        "fields": {
+            "headline": [
+                "A new evaluation finds fast 'System One' models can be accurate yet unreliable.",
+                "Agent research is moving toward judge-model roles and multi-user memory.",
+                "Video and driving world models are quickly improving physical consistency.",
+            ]
+        },
+    },
+    {
+        "kind": "report",
+        "key": "week:2026-W46",
+        "lang": "en",
+        "fields": {
+            "narrative": "Agent papers led this week, and memory-related keywords grew several times over the "
+            "previous four-week average."
+        },
+    },
+    {
+        "kind": "news",
+        "key": "ggml-org/llama-cpp-v1",
+        "lang": "ko",
+        "fields": {
+            "title": "llama.cpp v1",
+            "content": "(예시 번역 본문) llama.cpp 로 다양한 하드웨어에서 멀티모달 LLM 을 실행할 수 있다.",
+        },
+    },
+    {
+        "kind": "news",
+        "key": "ggml-org/llama-cpp-v1",
+        "lang": "en",
+        "fields": {
+            "summary": "llama.cpp reached 1.0 and reorganized its distribution and hardware support (sample).",
+            "key_points": ["Quantization and optimized backends", "Portable C/C++"],
+        },
+    },
+]
+
 SAMPLES = {
     "digest_latest.json": "/api/v1/digests/latest",
     "digests.json": "/api/v1/digests?limit=30",
@@ -326,6 +397,13 @@ SAMPLES = {
     "trend_periods.json": "/api/v1/trends/periods",
     "news_list.json": "/api/v1/news?limit=20",
     "news_detail.json": "/api/v1/news/ggml-org/llama-cpp-v1",
+    "digest_latest_en.json": "/api/v1/digests/latest?lang=en",
+    "paper_detail_ko.json": "/api/v1/papers/2611.10439?lang=ko",
+    "paper_detail_en.json": "/api/v1/papers/2611.10439?lang=en",
+    "news_list_ko.json": "/api/v1/news?limit=20&lang=ko",
+    "news_detail_ko.json": "/api/v1/news/ggml-org/llama-cpp-v1?lang=ko",
+    "news_detail_en.json": "/api/v1/news/ggml-org/llama-cpp-v1?lang=en",
+    "trend_weekly_en.json": "/api/v1/trends/weekly/latest?lang=en",
 }
 
 

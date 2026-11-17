@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
+import '../../l10n/strings.dart';
 
 class TopicChip extends StatelessWidget {
   const TopicChip(this.topic, {super.key, this.dense = false});
@@ -70,8 +71,8 @@ class MetaLine extends StatelessWidget {
           Icon(Icons.arrow_upward_rounded, size: 14, color: scheme.onSurfaceVariant),
           Text('$upvotes', style: muted),
         ]),
-        if (hasCode) Badge2('코드 공개', color: scheme.tertiary, icon: Icons.code),
-        if (interests.isNotEmpty) Badge2('관심 · ${interests.join(', ')}', color: scheme.primary, icon: Icons.star),
+        if (hasCode) Badge2(tr('코드 공개', 'Code'), color: scheme.tertiary, icon: Icons.code),
+        if (interests.isNotEmpty) Badge2(tr('관심 · ${interests.join(', ')}', 'Interest · ${interests.join(', ')}'), color: scheme.primary, icon: Icons.star),
       ],
     );
   }
@@ -127,7 +128,7 @@ class SourceBanner extends StatelessWidget {
         Icon(Icons.cloud_off, size: 16, color: scheme.onErrorContainer),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('오프라인 — 마지막으로 받은 내용을 보여 줍니다',
+          child: Text(tr('오프라인 — 마지막으로 받은 내용을 보여 줍니다', 'Offline — showing the last downloaded content'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onErrorContainer)),
         ),
       ]),
@@ -153,10 +154,10 @@ class ErrorView extends StatelessWidget {
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 4),
-            Text('설정에서 서버 주소를 확인하세요.',
+            Text(tr('설정에서 서버 주소를 확인하세요.', 'Check the server address in Settings.'),
                 textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 16),
-            FilledButton.tonal(onPressed: onRetry, child: const Text('다시 시도')),
+            FilledButton.tonal(onPressed: onRetry, child: Text(tr('다시 시도', 'Retry'))),
           ],
         ),
       ),
@@ -176,4 +177,13 @@ class EmptyNote extends StatelessWidget {
       child: Text(text, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
     );
   }
+}
+
+/// 번역이 아직 없는 항목 (BR-A34).
+class PendingTranslation extends StatelessWidget {
+  const PendingTranslation({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      Badge2(tr('번역 준비 중', 'Translation pending'), color: Theme.of(context).colorScheme.outline, icon: Icons.translate);
 }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/api_client.dart';
 import '../data/repository.dart';
+import '../l10n/strings.dart';
 
 enum LoadStatus { loading, ready, error }
 
@@ -31,11 +32,11 @@ class LoadController<T> extends ChangeNotifier {
       status = LoadStatus.ready;
     } on ApiException catch (e) {
       if (generation != _generation) return;
-      error = e.notFound ? '아직 데이터가 없습니다' : e.message;
+      error = e.notFound ? tr('아직 데이터가 없습니다', 'No data yet') : e.message;
       status = LoadStatus.error;
     } catch (_) {
       if (generation != _generation) return;
-      error = '데이터를 불러오지 못했습니다';
+      error = tr('데이터를 불러오지 못했습니다', 'Could not load data');
       status = LoadStatus.error;
     }
     _notify();

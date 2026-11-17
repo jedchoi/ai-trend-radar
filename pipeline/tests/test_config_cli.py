@@ -136,7 +136,15 @@ def test_prompts_are_plain_files():
     # NFR-P01: 프롬프트는 제공자와 무관한 파일, 첫 줄이 작업 이름
     prompts = Path(__file__).resolve().parents[1] / "radar" / "prompts"
     names = {p.stem: p.read_text("utf-8").splitlines()[0] for p in prompts.glob("*.md")}
-    assert names == {"brief": "BRIEF", "detail": "DETAIL", "headline": "HEADLINE", "report": "REPORT", "news": "NEWS"}
+    assert names == {
+        "brief": "BRIEF",
+        "detail": "DETAIL",
+        "headline": "HEADLINE",
+        "report": "REPORT",
+        "news": "NEWS",
+        "translate": "TRANSLATE",
+        "translate_text": "TRANSLATE_TEXT",
+    }
     assert json.dumps(names)
 
 
@@ -163,3 +171,38 @@ def test_cli_backfill_wiring_and_limits(tmp_path, monkeypatch):
     for bad in ("0", "121", "x"):
         with pytest.raises(SystemExit):
             cli.main(["--config", str(path), "backfill", "--days", bad])
+
+
+def test_cli_translate_and_daily_order(tmp_path, monkeypatch):
+    # BR-P45: radar translate --days N --max-minutes M, daily 은 논문 → 리포트 → 번역
+    seen = []
+
+    class FakeRunner:
+        def __init__(self, **kw):
+            pass
+
+        def config_problems(self, upload=True):
+            return []
+
+        def run_daily(self, explicit=None, backfill=True, dry_run_out=None):
+            seen.append("daily")
+            return 0
+
+        def run_reports(self):
+            seen.append("reports")
+
+        def run_translate(self, days=None, max_minutes=None):
+            seen.append(("translate", days, max_minutes))
+            return 0
+
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setenv("OK_TOKEN", "t")
+    path = tmp_path / "c.toml"
+    path.write_text(
+        f'[server]\nurl = "https://a.example"\ntoken_env = "OK_TOKEN"\n[paths]\ndata_dir = "{tmp_path}"\n'
+        "[translate]\ndays = 30\nmax_minutes = 60\n"
+    )
+    assert cli.main(["--config", str(path), "translate", "--days", "90", "--max-minutes", "0"]) == 0
+    assert cli.main(["--config", str(path), "daily"]) == 0
+    assert seen == [("translate", 90, 0), "daily", "reports", ("translate", None, None)]
+    assert cli.load_config(path).translate.days == 30

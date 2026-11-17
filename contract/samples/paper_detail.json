@@ -32,7 +32,8 @@
     "date": "2026-11-13",
     "hf_url": "https://huggingface.co/papers/2611.10439",
     "arxiv_url": "https://arxiv.org/abs/2611.10439",
-    "has_full_text": true
+    "has_full_text": true,
+    "untranslated": false
   },
   "related": [
     {

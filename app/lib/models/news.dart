@@ -59,6 +59,7 @@ class News {
     required this.keyPoints,
     required this.summarySource,
     required this.provider,
+    this.untranslated = false,
   });
 
   final NewsBrief brief;
@@ -67,6 +68,7 @@ class News {
   final List<String> keyPoints;
   final String summarySource;
   final String provider;
+  final bool untranslated;
 
   String get id => brief.id;
   bool get aiSummary => summarySource == 'ai';
@@ -78,6 +80,7 @@ class News {
         keyPoints: strings(j, 'key_points'),
         summarySource: str(j, 'summary_source', 'abstract'),
         provider: str(j, 'provider', 'none'),
+        untranslated: boolean(j, 'untranslated'),
       );
 }
 

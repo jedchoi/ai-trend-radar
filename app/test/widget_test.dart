@@ -139,7 +139,8 @@ void main() {
       client: sampleServer(failWith: 503),
       prefs: {
         'settings:server_url': testServer,
-        'cache:/api/v1/digests/latest': online.repository.cache.prefs.getString('cache:/api/v1/digests/latest')!,
+        'cache:/api/v1/digests/latest?lang=ko':
+            online.repository.cache.prefs.getString('cache:/api/v1/digests/latest?lang=ko')!,
       },
     );
     await pumpApp(tester, services: offline);
@@ -191,8 +192,8 @@ void main() {
     expect(find.text('AI 요약'), findsOneWidget);
     expect(find.text('핵심'), findsOneWidget);
     expect(find.text('양자화 · 최적화 백엔드'), findsOneWidget);
-    expect(find.text('원문'), findsOneWidget);
-    expect(find.textContaining('run multi-modal LLMs'), findsOneWidget);
+    expect(find.text('본문 (번역)'), findsOneWidget); // 3주기: 한국어 번역 본문 (news_detail_ko)
+    expect(find.textContaining('멀티모달 LLM'), findsOneWidget);
     expect(services.reads.isRead(ReadStore.news('ggml-org/llama-cpp-v1')), isTrue);
     await tester.tap(find.byTooltip('보관함에 저장'));
     await tester.pumpAndSettle();
@@ -228,7 +229,7 @@ void main() {
     await tester.scrollUntilVisible(abstractTile, 300, scrollable: find.byType(Scrollable).first);
     await tester.tap(abstractTile);
     await tester.pumpAndSettle();
-    expect(find.textContaining('(예시 초록)'), findsWidgets);
+    expect(find.textContaining('(예시 번역)'), findsWidgets); // 3주기: 한국어 번역 초록 (paper_detail_ko)
     final reader = find.text('본문 원문 읽기');
     await tester.scrollUntilVisible(reader, 300, scrollable: find.byType(Scrollable).first);
     await tester.scrollUntilVisible(find.text('arXiv'), 300, scrollable: find.byType(Scrollable).first);
@@ -236,8 +237,8 @@ void main() {
     await tester.scrollUntilVisible(reader, -300, scrollable: find.byType(Scrollable).first);
     await tester.tap(reader);
     await tester.pumpAndSettle();
-    expect(find.text('Method'), findsNothing); // '2 Method' 는 문단 (소제목 표시는 ## 만)
-    expect(find.textContaining('1 Introduction'), findsOneWidget);
+    expect(find.text('방법'), findsNothing); // '2 방법' 은 문단 (소제목 표시는 ## 만)
+    expect(find.textContaining('1 서론'), findsOneWidget);
   });
 
   testWidgets('읽은 논문은 목록에 읽음 표시 (AC-26-2)', (tester) async {

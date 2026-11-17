@@ -177,5 +177,6 @@
     }
   ],
   "narrative": null,
-  "narrative_provider": null
+  "narrative_provider": null,
+  "untranslated": false
 }

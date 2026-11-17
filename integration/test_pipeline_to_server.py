@@ -236,3 +236,61 @@ def test_news_and_original_text_end_to_end(server, tmp_path, monkeypatch):
     with psycopg.connect(DATABASE_URL) as conn:
         assert conn.execute("select source_raw->'paper'->>'id' from papers").fetchone()[0] == "2611.00001"
         assert conn.execute("select source_raw->>'title' from news").fetchone()[0] == "llama.cpp v1"
+
+
+class EchoTranslator:
+    """번역 대역: TRANSLATE 는 값 앞에 [번역], TRANSLATE_TEXT 는 글 앞에 [번역]."""
+
+    name = "fake"
+
+    def complete(self, system: str, user: str) -> str:
+        kind = system.splitlines()[0].strip()
+        if kind == "TRANSLATE":
+            data = json.loads(user[user.index("{"):])
+
+            def mark(v):
+                if isinstance(v, dict):
+                    return {k: mark(x) for k, x in v.items()}
+                if isinstance(v, list):
+                    return [mark(x) for x in v]
+                return f"[번역] {v}" if isinstance(v, str) else v
+
+            return json.dumps(mark(data), ensure_ascii=False)
+        return "[번역] " + user
+
+
+def test_translations_end_to_end(server, tmp_path, monkeypatch):
+    # FR-33 ~ FR-35: 파이프라인이 번역을 미리 올리고, 앱이 lang 으로 읽는다
+    from radar.config import TranslateConfig
+
+    monkeypatch.setenv("RADAR_IT_TOKEN", TOKEN)
+    items = [hf_item("2611.00001", "Agent memory study", 50, ["Agent"])]
+    pages = {"/papers/2611.00001.md": "# Agent memory study\n\nFull body."}
+    config = Config(
+        server=ServerConfig(url=server, token_env="RADAR_IT_TOKEN"),
+        ai=AIConfig(provider="none"),
+        collect=CollectConfig(models=1, datasets=1, spaces=1, news=False),
+        select=SelectConfig(max_featured=1),
+        paths=PathsConfig(data_dir=str(tmp_path / "t")),
+        translate=TranslateConfig(enabled=True, max_minutes=0),
+    )
+
+    def runner(provider):
+        return Runner(
+            config=config,
+            hf=fake_hf({"2026-11-16": items}, pages),
+            server=ServerClient(httpx.Client(base_url=server), token=TOKEN, sleep=lambda s: None),
+            analyzer=Analyzer(provider=provider, max_ai_papers=60),
+            now=lambda: dt.datetime(2026, 11, 17, 3, 0, tzinfo=dt.UTC),
+            sleep=lambda s: None,
+        )
+
+    assert runner(None).run_daily() == EXIT_OK
+    assert runner(EchoTranslator()).run_translate(days=30) == EXIT_OK
+    with httpx.Client(base_url=server) as app:
+        en = app.get("/api/v1/digests/latest", params={"lang": "en"}).json()
+        assert en["headline"][0].startswith("[번역] ") and not en["untranslated"]
+        ko = app.get("/api/v1/papers/2611.00001", params={"lang": "ko"}).json()["paper"]
+        assert ko["title"] == "[번역] Agent memory study"
+        assert ko["full_text"].startswith("[번역] ") and not ko["untranslated"]
+        assert app.get("/api/v1/papers", params={"q": "[번역]"}).json()["total"] == 1

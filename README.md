@@ -14,6 +14,8 @@ tool/radar-up.sh            # Postgres + API (Docker) → 지난 90일 채우기
 tool/radar-up.sh --status   # 서버 · 일정 · 최근 실행
 ```
 
+한국어 ↔ 영어: 앱 위쪽 `EN` / `한` 버튼. 번역은 PC 가 매일 미리 만들어 서버에 저장한다 (원문 본문까지). 지난 데이터를 한 번에 번역하려면 `tool/radar-daily.sh --translate 90` (AI 가 필요, 몇 시간 걸리고 끊겨도 이어서 한다).
+
 릴리즈 APK 파일만 만들려면 `tool/build-apk.sh` (서버 주소 내장, 결과는 `dist/`, `--install` 로 USB 기기에 설치).
 
 이미 쓰는 Postgres 가 있으면 `--database-url postgresql://user:pw@localhost:5432/radar`. 그 밖의 옵션은 `tool/radar-up.sh --help`. 다른 AI 도구로 이어서 작업할 때는 `aidlc-docs/handoff.md` 부터 읽는다.
@@ -22,7 +24,7 @@ tool/radar-up.sh --status   # 서버 · 일정 · 최근 실행
 | --- | --- | --- |
 | `server/` | 업로드 (토큰) · 조회 · 검색 · 트렌드 · 뉴스 API | Python 3.12, FastAPI, PostgreSQL 16 (psycopg 3), Docker |
 | `pipeline/` | 매일 수집 (논문 · Hub · 블로그 뉴스 · 원문) → 선별 → AI 분석 → 업로드, 주간 · 월간 리포트 | Python 3.11+, uv, httpx |
-| `app/` | 오늘 · 뉴스 · 트렌드 · 검색 · 보관함 · 설정, 원문 보기 · 읽음 표시 · 글자 크기 | Flutter 3.41.7 |
+| `app/` | 오늘 · 뉴스 · 트렌드 · 검색 · 보관함 · 설정, 원문 보기 · 읽음 표시 · 글자 크기 · 한국어/영어 전환 | Flutter 3.41.7 |
 | `contract/samples/` | API 예시 응답 (앱 테스트 입력) | 서버가 생성 |
 | `deploy/local/` | Docker Desktop 용 Compose (Postgres + API), 06:00 launchd 일정 | |
 | `deploy/server/` | 원격 서버용 Docker Compose (Postgres + API + Caddy HTTPS) | |

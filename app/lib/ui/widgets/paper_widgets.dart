@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../format.dart';
 import 'common.dart';
+import '../../l10n/strings.dart';
 
 /// 주목 논문 카드 (BR-A02).
 class PaperCard extends StatelessWidget {
@@ -33,7 +34,7 @@ class PaperCard extends StatelessWidget {
             children: [
               Row(children: [
                 TopicChip(paper.topic),
-                if (read) ...[const SizedBox(width: 8), Text('읽음', style: text.labelSmall)],
+                if (read) ...[const SizedBox(width: 8), Text(tr('읽음', 'Read'), style: text.labelSmall)],
               ]),
               const SizedBox(height: 8),
               Text(paper.title,
@@ -147,8 +148,8 @@ class PaperRow extends StatelessWidget {
                     children: [
                       TopicChip(topic, dense: true),
                       if (date != null) Text(shortDay(date!), style: muted),
-                      if (featured) Text('주목', style: muted?.copyWith(fontWeight: FontWeight.w700)),
-                      if (read) Text('읽음', style: muted),
+                      if (featured) Text(tr('주목', 'Featured'), style: muted?.copyWith(fontWeight: FontWeight.w700)),
+                      if (read) Text(tr('읽음', 'Read'), style: muted),
                       MetaLine(upvotes: upvotes, hasCode: hasCode, interests: interests),
                     ],
                   ),

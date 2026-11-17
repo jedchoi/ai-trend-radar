@@ -9,7 +9,7 @@ import datetime as dt
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
 PAPER_ID_PATTERN = r"^[A-Za-z0-9._-]{1,40}$"
 HUB_ID_PATTERN = r"^[A-Za-z0-9._-]{1,96}/[A-Za-z0-9._-]{1,96}$"
@@ -210,6 +210,84 @@ class NewsIngest(Strict):
         return value
 
 
+# ---------- 번역 (3주기, BR-S41) ----------
+
+Lang = Literal["ko", "en"]
+TranslationKind = Literal["paper", "news", "digest", "report"]
+REPORT_KEY_PATTERN = r"^(week:\d{4}-W(0[1-9]|[1-4]\d|5[0-3])|month:\d{4}-(0[1-9]|1[0-2]))$"
+DATE_KEY_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+Line300 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
+class PaperTranslation(Strict):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)] | None = None
+    one_liner: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)] | None = None
+    abstract: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)] | None = None
+    full_text: Annotated[str, StringConstraints(min_length=1, max_length=FULL_TEXT_MAX)] | None = None
+    detail: PaperDetail | None = None
+    glossary: list[GlossaryItem] | None = Field(default=None, max_length=5)
+
+
+class NewsTranslation(Strict):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)] | None = None
+    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)] | None = None
+    key_points: list[Line300] | None = Field(default=None, max_length=6)
+    content: Annotated[str, StringConstraints(min_length=1, max_length=FULL_TEXT_MAX)] | None = None
+
+
+class DigestTranslation(Strict):
+    headline: list[Line300] | None = Field(default=None, min_length=1, max_length=3)
+
+
+class ReportTranslation(Strict):
+    narrative: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=3000)] | None = None
+
+
+TRANSLATION_FIELDS: dict[str, type[Strict]] = {
+    "paper": PaperTranslation,
+    "news": NewsTranslation,
+    "digest": DigestTranslation,
+    "report": ReportTranslation,
+}
+TRANSLATION_KEYS = {
+    "paper": PAPER_ID_PATTERN,
+    "news": NEWS_ID_PATTERN,
+    "digest": DATE_KEY_PATTERN,
+    "report": REPORT_KEY_PATTERN,
+}
+
+
+class TranslationIn(Strict):
+    kind: TranslationKind
+    key: Annotated[str, StringConstraints(max_length=260)]
+    lang: Lang
+    fields: dict
+
+    @model_validator(mode="after")
+    def _check(self) -> TranslationIn:
+        import re
+
+        if not re.fullmatch(TRANSLATION_KEYS[self.kind], self.key):
+            raise ValueError("invalid key for kind")
+        if self.kind == "digest":
+            dt.date.fromisoformat(self.key)
+        parsed = TRANSLATION_FIELDS[self.kind].model_validate(self.fields)
+        fields = parsed.model_dump(exclude_none=True)
+        if not fields:
+            raise ValueError("empty fields")
+        self.fields = fields
+        return self
+
+
+class TranslationIngest(Strict):
+    provider: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,30}$")] = "none"
+    items: list[TranslationIn] = Field(min_length=1, max_length=50)
+
+
+class TranslationResult(BaseModel):
+    translations: int
+
+
 # ---------- 응답 ----------
 
 
@@ -220,6 +298,7 @@ class Paper(PaperIn):
     arxiv_url: str
     has_full_text: bool = False
     source_raw: dict | None = Field(default=None, exclude=True)  # BR-S31: 응답에 넣지 않는다
+    untranslated: bool = False  # BR-S40: lang 을 줬는데 번역이 없음
 
 
 class PaperBrief(BaseModel):
@@ -246,6 +325,7 @@ class Digest(BaseModel):
     provider: str
     papers: list[Paper]
     hub: list[HubItem]
+    untranslated: bool = False
 
 
 class DigestSummary(BaseModel):
@@ -310,6 +390,7 @@ class TrendReport(BaseModel):
     hub_steady: list[HubSteady]
     narrative: str | None = None
     narrative_provider: str | None = None
+    untranslated: bool = False
 
 
 class TopicSeries(BaseModel):
@@ -355,6 +436,7 @@ class News(NewsBrief):
     key_points: list[str]
     summary_source: SummarySource
     provider: str
+    untranslated: bool = False
 
 
 class NewsList(BaseModel):

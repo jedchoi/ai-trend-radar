@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../format.dart';
 import 'common.dart';
+import '../../l10n/strings.dart';
 
 String _source(NewsBrief n) => [if (n.organization != null) n.organization!, if (n.day.isNotEmpty) shortDay(n.day)].join(' · ');
 
@@ -51,7 +52,7 @@ class NewsTile extends StatelessWidget {
                       children: [
                         TopicChip(news.topic, dense: true),
                         Text(_source(news), style: muted),
-                        if (read) Text('읽음', style: muted),
+                        if (read) Text(tr('읽음', 'Read'), style: muted),
                       ],
                     ),
                   ],

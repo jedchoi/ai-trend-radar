@@ -24,7 +24,7 @@ void main() {
     final loaded = await r.latestDigest();
     expect(loaded.offline, isFalse);
     expect(loaded.data.date, '2026-11-13');
-    expect(r.cache.read('/api/v1/digests/latest'), isNotNull);
+    expect(r.cache.read('/api/v1/digests/latest?lang=ko'), isNotNull); // BR-A31: 언어별 저장본
   });
 
   test('실패하면 저장본을 오프라인으로 (AC-14-1)', () async {
@@ -67,6 +67,7 @@ void main() {
       'featured': 'true',
       'limit': '20',
       'offset': '20',
+      'lang': 'ko',
     });
   });
 

@@ -50,7 +50,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.15777",
       "arxiv_url": "https://arxiv.org/abs/2611.15777",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.17167",
@@ -90,7 +91,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.17167",
       "arxiv_url": "https://arxiv.org/abs/2611.17167",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.10439",
@@ -125,7 +127,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.10439",
       "arxiv_url": "https://arxiv.org/abs/2611.10439",
-      "has_full_text": true
+      "has_full_text": true,
+      "untranslated": false
     },
     {
       "id": "2611.14815",
@@ -155,7 +158,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.14815",
       "arxiv_url": "https://arxiv.org/abs/2611.14815",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.13004",
@@ -185,7 +189,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.13004",
       "arxiv_url": "https://arxiv.org/abs/2611.13004",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.15131",
@@ -215,7 +220,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.15131",
       "arxiv_url": "https://arxiv.org/abs/2611.15131",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.16748",
@@ -245,7 +251,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.16748",
       "arxiv_url": "https://arxiv.org/abs/2611.16748",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.15844",
@@ -275,7 +282,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.15844",
       "arxiv_url": "https://arxiv.org/abs/2611.15844",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.05984",
@@ -305,7 +313,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.05984",
       "arxiv_url": "https://arxiv.org/abs/2611.05984",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.16961",
@@ -335,7 +344,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.16961",
       "arxiv_url": "https://arxiv.org/abs/2611.16961",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     },
     {
       "id": "2611.08219",
@@ -365,7 +375,8 @@
       "date": "2026-11-13",
       "hf_url": "https://huggingface.co/papers/2611.08219",
       "arxiv_url": "https://arxiv.org/abs/2611.08219",
-      "has_full_text": false
+      "has_full_text": false,
+      "untranslated": false
     }
   ],
   "hub": [
@@ -465,5 +476,6 @@
       "streak_days": 1,
       "url": "https://huggingface.co/spaces/multimodalart/h3-acceleration-arena"
     }
-  ]
+  ],
+  "untranslated": false
 }

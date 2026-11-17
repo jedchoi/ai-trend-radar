@@ -5,6 +5,7 @@ import '../models/models.dart';
 import 'api_client.dart';
 import 'cache_store.dart';
 import 'settings_store.dart';
+import '../l10n/strings.dart';
 
 /// 불러온 값과 출처 (오프라인 여부).
 class Loaded<T> {
@@ -22,9 +23,17 @@ class RadarRepository {
   final CacheStore cache;
   final http.Client client;
 
-  Future<Loaded<T>> _get<T>(String path, T Function(Json) parse) async {
+  /// BR-A31: 내용 요청에는 언어를 붙인다 (오프라인 저장본도 언어별 경로로 남는다).
+  String _localized(String path) {
+    final uri = Uri.parse(path);
+    return uri.replace(queryParameters: {...uri.queryParameters, 'lang': settings.language}).toString();
+  }
+
+  Future<Loaded<T>> _get<T>(String path, T Function(Json) parse, {bool localized = true}) async {
+    if (localized) path = _localized(path);
     if (!settings.configured) {
-      throw const ApiException('설정에서 서버 주소를 입력하세요', notConfigured: true);
+      throw ApiException(tr('설정에서 서버 주소를 입력하세요', 'Enter the server address in Settings'),
+          notConfigured: true);
     }
     final api = HttpRadarApi(settings.serverUrl, client);
     try {
@@ -81,13 +90,13 @@ class RadarRepository {
   Future<Loaded<News>> newsDetail(String id) =>
       _get('/api/v1/news/${id.split('/').map(Uri.encodeComponent).join('/')}', News.fromJson);
 
-  Future<Loaded<Periods>> periods() => _get('/api/v1/trends/periods', Periods.fromJson);
+  Future<Loaded<Periods>> periods() => _get('/api/v1/trends/periods', Periods.fromJson, localized: false);
 
   Future<Loaded<TrendReport>> trend(String period, String key) =>
       _get('/api/v1/trends/${period == 'month' ? 'monthly' : 'weekly'}/$key', TrendReport.fromJson);
 
   Future<Loaded<TopicSeries>> series({int weeks = 12}) =>
-      _get('/api/v1/trends/series?weeks=$weeks', TopicSeries.fromJson);
+      _get('/api/v1/trends/series?weeks=$weeks', TopicSeries.fromJson, localized: false);
 
   static String _day(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

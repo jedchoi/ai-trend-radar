@@ -55,6 +55,17 @@ class SelectConfig:
 
 
 @dataclass(frozen=True)
+class TranslateConfig:
+    """3주기: 한국어 · 영어 번역 (FR-35, NFR-13)."""
+
+    enabled: bool = True
+    days: int = 90  # 매일 실행에서 살펴볼 기간 (이미 번역된 것은 해시 비교만)
+    max_minutes: int = 180  # 한 번 실행의 번역 시간 상한, 0 = 무제한
+    chunk_chars: int = 6000  # 긴 본문 조각 크기
+    full_text: bool = True  # 원문 본문까지 번역
+
+
+@dataclass(frozen=True)
 class PathsConfig:
     data_dir: str = "~/.local/share/ai-trend-radar"
 
@@ -66,6 +77,7 @@ class Config:
     collect: CollectConfig = field(default_factory=CollectConfig)
     select: SelectConfig = field(default_factory=SelectConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
+    translate: TranslateConfig = field(default_factory=TranslateConfig)
 
     @property
     def data_path(self) -> Path:
@@ -78,6 +90,7 @@ SECTIONS = {
     "collect": CollectConfig,
     "select": SelectConfig,
     "paths": PathsConfig,
+    "translate": TranslateConfig,
 }
 
 
