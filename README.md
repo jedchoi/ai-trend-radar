@@ -32,6 +32,16 @@ AI 는 파이프라인의 분석 단계에서만 쓴다. `~/.config/ai-trend-rad
 
 프롬프트는 `pipeline/radar/prompts/*.md` 의 일반 텍스트라 어떤 모델에도 같은 형식을 요구한다. 서버와 앱은 어떤 AI 를 썼는지 알 필요가 없다. 트렌드 통계용 키워드는 Hugging Face 키워드를 쓰므로 AI 를 바꿔도 주간 비교가 흔들리지 않는다.
 
+## 내 PC 에서 서버 띄우고 휴대폰으로 보기 (같은 Wi-Fi, http)
+
+```sh
+tool/local-server.sh --demo        # 서버 시작, 휴대폰에 넣을 주소 (http://<PC IP>:8000) 를 출력. --demo = 예시 데이터
+tool/local-pipeline.sh             # (다른 터미널) 어제 Hugging Face 데이터를 수집해 로컬 서버에 업로드
+cd app && tool/bootstrap.sh && flutter run --profile   # 앱 설정 > 서버 주소에 위 주소 입력
+```
+
+토큰 · DB · 설정은 저장소 안 `.local/` (git 제외) 에 만들어진다. Android 는 debug · profile 빌드만 http 를 허용하고, release 빌드는 HTTPS 서버 (`deploy/server`) 가 필요하다.
+
 ## 빠른 시작
 
 1. **서버** (Linux 서버, Docker) — `deploy/server/README.md`

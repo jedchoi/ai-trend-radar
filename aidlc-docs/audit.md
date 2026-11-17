@@ -205,3 +205,18 @@
 **Context**: 버그 수정 (Construction 재오픈 없이 pc-pipeline Code Generation 범위 안 수정, CG-7 기록)
 
 ---
+## 사용자 입력 (설치 요청)
+**Timestamp**: 2026-11-17T15:00:00Z
+**User Input**: "연결된 모바일에 앱 설치해줘"
+**AI Response**: "세션 셸은 Mac 의 리눅스 가상 환경이라 USB 기기에 접근 불가. flutter devices / flutter run --release 명령과 Android · iOS 준비 사항 안내"
+**Context**: Deployment Execution (앱)
+
+---
+
+## 사용자 입력 (변경 요청)
+**Timestamp**: 2026-11-17T15:10:00Z
+**User Input**: "로컬에서 서버를 띄우고, ip 기반으로 서버에 접근할수있도록 해봐"
+**AI Response**: "tool/local-server.sh (0.0.0.0 바인딩, .local/ 토큰 · DB · 파이프라인 설정, --demo 예시 데이터, PC IP 안내), tool/local-pipeline.sh 추가. app/tool/bootstrap.sh: Android debug · profile 빌드만 cleartext 허용, iOS NSAllowsLocalNetworking. release 는 https 유지. 클라우드에서 IP 접속 · 업로드 확인"
+**Context**: Operations 변경 (로컬 시험 배포). Security: SECURITY-01 은 release 기준 유지, http 는 개발 빌드 한정
+
+---

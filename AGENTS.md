@@ -6,6 +6,8 @@ AI 코딩 에이전트 (Claude Code, Codex CLI, Gemini CLI, Cursor 등) 공통 �
 
 ```sh
 tool/check.sh                                   # 전체 점검 (CI 와 같음)
+tool/local-server.sh --demo                     # 로컬 서버 (0.0.0.0:8000, http, .local/)
+tool/local-pipeline.sh                          # 로컬 서버로 파이프라인 실행
 cd server && .venv/bin/pytest -q                # 서버 테스트 (성능: -m perf)
 cd pipeline && uv run pytest -q                 # 파이프라인 테스트
 PYTHONPATH=server:pipeline pytest integration   # 통합

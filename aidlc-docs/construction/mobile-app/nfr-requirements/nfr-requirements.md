@@ -14,7 +14,7 @@
 
 | 규칙 | 판정 | 근거 |
 | --- | --- | --- |
-| SECURITY-01 | compliant | 서버 주소 https 권장 · http 는 개발용 (Android 기본 정책상 http 차단, 설정 안내) |
+| SECURITY-01 | compliant | release 빌드는 https 만 (Android cleartext 차단 유지). 로컬 서버 시험용 http 는 debug · profile 빌드와 iOS 로컬 네트워크 예외로만 허용 (`tool/bootstrap.sh`) |
 | SECURITY-05 | compliant | 입력 (검색어 · 키워드 · 메모 · 주소) 길이 · 형식 제한 |
 | SECURITY-10 | compliant | NFR-A07 |
 | SECURITY-12 | compliant | 앱에 하드코딩 비밀 없음 |

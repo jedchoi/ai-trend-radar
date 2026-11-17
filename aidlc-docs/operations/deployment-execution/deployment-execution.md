@@ -1,5 +1,16 @@
 # Deployment Execution (runbook, 실행은 사용자)
 
+## 0. 로컬 시험 배포 (같은 Wi-Fi, IP 접속)
+
+| 단계 | 명령 | 확인 |
+| --- | --- | --- |
+| 서버 | `tool/local-server.sh --demo` | 출력된 `http://<PC IP>:8000/api/v1/health` 가 200 |
+| 데이터 | `tool/local-pipeline.sh` | "완료: 논문 N편" |
+| 앱 | `cd app && tool/bootstrap.sh && flutter run --profile`, 설정에 서버 주소 | 오늘 화면에 데모 표시 없이 표시 |
+
+- 2026-11-17 클라우드 작업 공간에서 확인: IP 로 health · digests 200, `radar check` 통과, `.local/ingest-token` 으로 업로드 200
+- 보안: http 는 같은 네트워크 시험용. Android release 빌드는 cleartext 차단 유지 (debug · profile 만 허용), 토큰은 `.local/` 권한 600
+
 1. GitHub 비공개 저장소 생성 후 push → CI 통과 확인
 2. Mac: `cd pipeline && uv run radar token` → 토큰은 키체인 (`security add-generic-password -U -s ai-trend-radar -a RADAR_INGEST_TOKEN -w '<토큰>'`), 해시는 메모
 3. 서버: `git clone`, `deploy/server/.env` 작성, `docker compose up -d --build`, `curl https://<도메인>/api/v1/health`
