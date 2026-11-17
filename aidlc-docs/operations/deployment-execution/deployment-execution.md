@@ -1,15 +1,18 @@
 # Deployment Execution (runbook, 실행은 사용자)
 
-## 0. 로컬 시험 배포 (같은 Wi-Fi, IP 접속)
+## 0. 로컬 실데이터 배포 (같은 Wi-Fi, IP 접속)
 
 | 단계 | 명령 | 확인 |
 | --- | --- | --- |
-| 서버 | `tool/local-server.sh --demo` | 출력된 `http://<PC IP>:8000/api/v1/health` 가 200 |
-| 데이터 | `tool/local-pipeline.sh` | "완료: 논문 N편" |
-| 앱 | `cd app && tool/bootstrap.sh && flutter run --profile`, 설정에 서버 주소 | 오늘 화면에 데모 표시 없이 표시 |
+| 서버 | `tool/local-server.sh` | 출력된 `http://<PC IP>:8000/api/v1/health` 가 200, 분석 AI 표시 |
+| 90일 데이터 | `tool/local-backfill.sh` | 1단계 "[n/90] 올림" → 2단계 "[AI n/m] 분석" → "리포트 … 올림" |
+| 앱 | `tool/local-app.sh -d <기기 ID>` | 오늘 화면에 실제 논문 |
+| 매일 | `tool/local-pipeline.sh` (또는 launchd) | 어제 날짜 추가 |
 
-- 2026-11-17 클라우드 작업 공간에서 확인: IP 로 health · digests 200, `radar check` 통과, `.local/ingest-token` 으로 업로드 200
-- 보안: http 는 같은 네트워크 시험용. Android release 빌드는 cleartext 차단 유지 (debug · profile 만 허용), 토큰은 `.local/` 권한 600
+- 2026-11-17 클라우드 작업 공간에서 확인 (Hugging Face 는 가짜 응답 서버, AI 는 가짜 `claude` CLI): 90일 1단계 업로드 · 2단계 AI 90일 · 리포트 주 12 + 월 4, 전체 61초. 업로드 429 문제를 이 시험에서 발견해 수정 (BR-P23, NFR-S05)
+- 보안: http 는 같은 네트워크 시험용. Android release 빌드는 cleartext 차단 유지, 토큰은 `.local/` 권한 600
+
+## 운영 배포
 
 1. GitHub 비공개 저장소 생성 후 push → CI 통과 확인
 2. Mac: `cd pipeline && uv run radar token` → 토큰은 키체인 (`security add-generic-password -U -s ai-trend-radar -a RADAR_INGEST_TOKEN -w '<토큰>'`), 해시는 메모

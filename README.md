@@ -12,7 +12,7 @@ Hugging Face ──▶ PC 파이프라인 (pipeline/) ──HTTPS 업로드─�
 | `server/` | 업로드 (토큰) · 조회 · 검색 · 트렌드 API | Python 3.12, FastAPI, SQLite (FTS5), Docker |
 | `pipeline/` | 매일 수집 → 선별 → AI 분석 → 업로드, 주간 · 월간 리포트 | Python 3.11+, uv, httpx |
 | `app/` | 오늘 · 트렌드 · 검색 · 보관함 · 설정 | Flutter 3.41.7 |
-| `contract/samples/` | API 예시 응답 (앱 데모 · 테스트 입력) | 서버가 생성 |
+| `contract/samples/` | API 예시 응답 (앱 테스트 입력) | 서버가 생성 |
 | `deploy/server/` | Docker Compose + Caddy (HTTPS) | |
 | `integration/` | 파이프라인 → 서버 통합 테스트 | |
 | `aidlc-docs/` | AI-DLC 산출물 (요구사항 · 스토리 · 설계 · 감사 기록) | |
@@ -32,21 +32,25 @@ AI 는 파이프라인의 분석 단계에서만 쓴다. `~/.config/ai-trend-rad
 
 프롬프트는 `pipeline/radar/prompts/*.md` 의 일반 텍스트라 어떤 모델에도 같은 형식을 요구한다. 서버와 앱은 어떤 AI 를 썼는지 알 필요가 없다. 트렌드 통계용 키워드는 Hugging Face 키워드를 쓰므로 AI 를 바꿔도 주간 비교가 흔들리지 않는다.
 
-## 내 PC 에서 서버 띄우고 휴대폰으로 보기 (같은 Wi-Fi, http)
+## 내 PC 에서 실제 데이터로 보기 (같은 Wi-Fi, http)
 
 ```sh
-tool/local-server.sh --demo        # 서버 시작, 휴대폰에 넣을 주소 (http://<PC IP>:8000) 를 출력. --demo = 예시 데이터
-tool/local-pipeline.sh             # (다른 터미널) 어제 Hugging Face 데이터를 수집해 로컬 서버에 업로드
-cd app && tool/bootstrap.sh && flutter run --profile   # 앱 설정 > 서버 주소에 위 주소 입력
+tool/local-server.sh          # 터미널 1: 서버 시작 (빈 DB). 휴대폰에 넣을 주소 http://<PC IP>:8000 과 분석에 쓸 AI 를 출력
+tool/local-backfill.sh        # 터미널 2: 지난 90일 실제 Hugging Face 데이터 → 바로 업로드 → AI 분석 (최근 날부터) → 주 · 월 리포트
+tool/local-app.sh -d <기기>    # 앱을 이 서버 주소로 설치 · 실행 (profile 빌드)
+tool/local-pipeline.sh        # 다음 날부터: 어제 하루치 (launchd 로 자동화하려면 pipeline/deploy)
 ```
 
-토큰 · DB · 설정은 저장소 안 `.local/` (git 제외) 에 만들어진다. Android 는 debug · profile 빌드만 http 를 허용하고, release 빌드는 HTTPS 서버 (`deploy/server`) 가 필요하다.
+- 백필 1단계는 몇 분이면 끝나 앱에서 바로 볼 수 있고, AI 분석은 그 뒤에 최근 날부터 덮어쓴다. 오래 걸리면 끊었다가 다시 실행하면 이어서 한다
+- 분석 AI 는 자동으로 고른다: `claude` CLI → `gemini` CLI → Ollama → 없음 (Hugging Face 요약). 바꾸려면 `.local/pipeline.toml` 의 `[ai]`
+- Hub 트렌딩 (모델 · 데이터셋 · Spaces) 은 "지금" 목록만 받을 수 있어 백필의 마지막 날에만 붙는다. Hub 신규 · 체류 통계는 그날부터 쌓인다
+- 토큰 · DB · 설정은 저장소 안 `.local/` (git 제외). Android 는 debug · profile 빌드만 http 를 허용하고, release 빌드는 HTTPS 서버 (`deploy/server`) 가 필요하다
 
 ## 빠른 시작
 
 1. **서버** (Linux 서버, Docker) — `deploy/server/README.md`
 2. **PC 파이프라인** (Mac) — `pipeline/deploy/install-mac.sh` 실행 후 안내에 따라 토큰 · 키를 키체인에 저장
-3. **앱** — `cd app && tool/bootstrap.sh && flutter run` (서버 주소가 없으면 데모 데이터로 실행)
+3. **앱** — `cd app && tool/bootstrap.sh && flutter run --dart-define=RADAR_SERVER_URL=https://<도메인>` (또는 앱 설정에서 주소 입력)
 
 토큰은 PC 에서 `cd pipeline && uv run radar token` 으로 만든다. 출력의 `RADAR_INGEST_TOKEN` 은 PC 키체인에, `INGEST_TOKEN_SHA256` 은 서버 `.env` 에 넣는다.
 

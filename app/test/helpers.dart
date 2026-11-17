@@ -15,9 +15,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const testServer = 'https://radar.test';
 
-/// 예시 응답 (contract/samples 복사본, 서버가 만든 실제 응답 형식).
+/// 예시 응답 (서버가 만든 실제 응답 형식, `server/tools/make_samples.py` → contract/samples).
 Map<String, dynamic> sample(String name) =>
-    jsonDecode(File('assets/demo/$name.json').readAsStringSync()) as Map<String, dynamic>;
+    jsonDecode(File('../contract/samples/$name.json').readAsStringSync()) as Map<String, dynamic>;
 
 http.Response jsonResponse(Object body, [int status = 200]) => http.Response.bytes(
       utf8.encode(jsonEncode(body)),

@@ -4,31 +4,27 @@ import '../models/json.dart';
 import '../models/models.dart';
 import 'api_client.dart';
 import 'cache_store.dart';
-import 'demo_api.dart';
 import 'settings_store.dart';
 
-/// 불러온 값과 출처 (오프라인 · 데모 여부).
+/// 불러온 값과 출처 (오프라인 여부).
 class Loaded<T> {
-  const Loaded(this.data, {this.offline = false, this.demo = false});
+  const Loaded(this.data, {this.offline = false});
 
   final T data;
   final bool offline;
-  final bool demo;
 }
 
-/// 네트워크 우선, 실패하면 저장본 (BR-A12). 서버 주소가 없으면 데모 (BR-A13).
+/// 네트워크 우선, 실패하면 저장본 (BR-A12). 서버 주소가 없으면 설정 안내 (BR-A13).
 class RadarRepository {
-  RadarRepository({required this.settings, required this.cache, required this.client, RadarApi? demo})
-      : demo = demo ?? DemoRadarApi();
+  RadarRepository({required this.settings, required this.cache, required this.client});
 
   final SettingsStore settings;
   final CacheStore cache;
   final http.Client client;
-  final RadarApi demo;
 
   Future<Loaded<T>> _get<T>(String path, T Function(Json) parse) async {
-    if (settings.demoMode) {
-      return Loaded(parse(await demo.getJson(path)), demo: true);
+    if (!settings.configured) {
+      throw const ApiException('설정에서 서버 주소를 입력하세요', notConfigured: true);
     }
     final api = HttpRadarApi(settings.serverUrl, client);
     try {

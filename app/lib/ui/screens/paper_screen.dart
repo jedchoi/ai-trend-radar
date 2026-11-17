@@ -92,7 +92,7 @@ class _PaperScreenState extends State<PaperScreen> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
-        SourceBanner(offline: offline, demo: false),
+        SourceBanner(offline: offline),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Column(

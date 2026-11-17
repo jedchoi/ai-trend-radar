@@ -13,7 +13,6 @@ class LoadController<T> extends ChangeNotifier {
   LoadStatus status = LoadStatus.loading;
   T? data;
   bool offline = false;
-  bool demo = false;
   String? error;
   int _generation = 0;
   bool _disposed = false;
@@ -29,7 +28,6 @@ class LoadController<T> extends ChangeNotifier {
       if (generation != _generation) return; // 더 최근 요청이 있음
       data = result.data;
       offline = result.offline;
-      demo = result.demo;
       status = LoadStatus.ready;
     } on ApiException catch (e) {
       if (generation != _generation) return;

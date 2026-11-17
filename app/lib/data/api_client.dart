@@ -6,10 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/json.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.status});
+  const ApiException(this.message, {this.status, this.notConfigured = false});
 
   final String message;
   final int? status;
+  final bool notConfigured;
 
   bool get notFound => status == 404;
 

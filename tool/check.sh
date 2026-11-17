@@ -27,10 +27,9 @@ cd "$ROOT"
 PYTHONPATH=server:pipeline server/.venv/bin/python -m pip install -q -e pipeline >/dev/null
 PYTHONPATH=server:pipeline server/.venv/bin/pytest integration -q
 
-step "contract samples == app demo assets"
+step "contract samples 최신 여부"
 (cd "$ROOT/server" && .venv/bin/python -m tools.make_samples --out /tmp/radar-samples >/dev/null)
 diff -r /tmp/radar-samples "$ROOT/contract/samples"
-diff -r "$ROOT/contract/samples" "$ROOT/app/assets/demo"
 
 if [ "$SKIP_APP" = 0 ] && command -v flutter >/dev/null 2>&1; then
   step "app"

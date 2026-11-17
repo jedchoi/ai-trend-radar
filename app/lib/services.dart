@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'data/api_client.dart';
 import 'data/cache_store.dart';
 import 'data/library_store.dart';
 import 'data/repository.dart';
@@ -17,7 +16,7 @@ class AppServices {
   final RadarRepository repository;
 
   /// [serverUrl] 기본값은 빌드 시 `--dart-define=RADAR_SERVER_URL=https://...` 로 줄 수 있다.
-  static Future<AppServices> create({http.Client? client, RadarApi? demo}) async {
+  static Future<AppServices> create({http.Client? client}) async {
     final prefs = await SharedPreferences.getInstance();
     const defaultUrl = String.fromEnvironment('RADAR_SERVER_URL');
     final settings = SettingsStore(prefs, defaultServerUrl: defaultUrl);
@@ -28,7 +27,6 @@ class AppServices {
         settings: settings,
         cache: CacheStore(prefs),
         client: client ?? http.Client(),
-        demo: demo,
       ),
     );
   }

@@ -6,7 +6,7 @@
 | NFR-S02 | 실패 격리 | 업로드 중 예외 시 저장 0건 (테스트로 확인) | NFR-03 |
 | NFR-S03 | 업로드 인증 | BR-S01. 토큰 원문은 서버에 저장하지 않고 SHA-256 만 환경 변수로 받음 | NFR-04, SECURITY-12 |
 | NFR-S04 | 전송 암호화 | 외부 노출은 HTTPS 프록시 (Caddy) 만, 앱 컨테이너 포트는 외부에 열지 않음 | NFR-04, SECURITY-01 |
-| NFR-S05 | 요청 속도 제한 | 공개 API IP 당 분당 120회, 업로드 분당 30회, 초과 429 | SECURITY-11 |
+| NFR-S05 | 요청 속도 제한 | 공개 API IP 당 분당 120회, 업로드 분당 30회, 초과 429 + `Retry-After` (남은 초). 로컬 실행 스크립트는 업로드 한도 600 | SECURITY-11 |
 | NFR-S06 | 입력 검증 | 모든 경로 · 쿼리 · 본문에 타입 · 길이 · 형식 검사, 요청 본문 최대 2 MB, SQL 은 파라미터 바인딩만 | SECURITY-05 |
 | NFR-S07 | 보안 헤더 | 모든 응답에 `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. HSTS 는 프록시에서 | SECURITY-04 |
 | NFR-S08 | 로깅 | 요청마다 JSON 한 줄 (시각, 요청 id, 메서드, 경로, 상태, 소요 ms, IP). 인증 실패 · 속도 제한은 `security_event` 로 기록. 토큰 · 본문은 기록하지 않음 | SECURITY-02, 03, 14 |

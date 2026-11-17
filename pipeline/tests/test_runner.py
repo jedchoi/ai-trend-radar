@@ -234,3 +234,25 @@ def test_dry_run_still_checks_ai_settings(config, tmp_path):
     assert (
         build(bad, FakeHF(trending=trending()), FakeServer()).run_daily(dry_run_out=tmp_path / "o.json") == EXIT_CONFIG
     )
+
+
+def test_upload_waits_when_server_rate_limits(config):
+    # BR-P12: 429 가 계속되면 Retry-After 만큼 기다렸다 다시 보낸다 (백필처럼 업로드가 몰릴 때)
+    import httpx
+
+    calls = []
+
+    def handler(request):
+        calls.append(1)
+        if len(calls) <= 3:
+            return httpx.Response(429, headers={"retry-after": "42"}, json={"error": "rate_limited"})
+        return httpx.Response(200, json={"date": "2026-11-16", "papers": 0})
+
+    sleeps = []
+    from radar.models import DigestPayload
+
+    client = ServerClient(
+        httpx.Client(transport=httpx.MockTransport(handler), base_url="https://x"), token="t", sleep=sleeps.append
+    )
+    client.upload_digest(DigestPayload(date=D(2026, 11, 16), provider="none", papers=[], hub=[]))
+    assert sleeps == [2, 4, 42]

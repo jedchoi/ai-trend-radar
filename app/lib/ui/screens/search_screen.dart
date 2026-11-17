@@ -139,7 +139,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ]),
         ),
-        if (_offline) const SourceBanner(offline: true, demo: false),
+        if (_offline) const SourceBanner(offline: true),
         if (_error != null) EmptyNote(_error!),
         if (_searched && !_loading && _items.isEmpty && _error == null) const EmptyNote('결과 없음'),
         if (!_searched && !_loading)

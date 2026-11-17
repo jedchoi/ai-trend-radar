@@ -35,7 +35,6 @@ jobs:
         run: |
           python -m tools.make_samples --out /tmp/samples
           diff -r /tmp/samples ../contract/samples
-          diff -r ../contract/samples ../app/assets/demo
       - uses: actions/upload-artifact@v4
         with:
           name: sbom-server
@@ -98,10 +97,10 @@ jobs:
       - run: tool/bootstrap.sh
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
-      - name: debug APK (데모 데이터, 서버 주소 없음)
+      - name: debug APK (빌드 확인용, 서버 주소는 앱 설정에서)
         run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug-demo
+          name: app-debug
           path: app/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14

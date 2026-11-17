@@ -28,6 +28,11 @@ class RateLimiter:
         self._counts: dict[tuple[str, str], tuple[float, int]] = {}
         self._lock = threading.Lock()
 
+    def retry_after(self, group: str, ip: str, now: float | None = None) -> int:
+        now = time.monotonic() if now is None else now
+        start, _ = self._counts.get((group, ip), (now, 0))
+        return max(1, min(60, int(WINDOW_SECONDS - (now - start)) + 1))
+
     def allow(self, group: str, ip: str, now: float | None = None) -> bool:
         now = time.monotonic() if now is None else now
         with self._lock:
@@ -68,15 +73,10 @@ class GuardMiddleware:
                 message = {**message, "headers": headers}
             await send(message)
 
-        async def reply(status: int, code: str) -> None:
+        async def reply(status: int, code: str, extra: list[tuple[bytes, bytes]] | None = None) -> None:
             body = json.dumps({"error": code}).encode()
-            await send_wrapper(
-                {
-                    "type": "http.response.start",
-                    "status": status,
-                    "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())],
-                }
-            )
+            headers = [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]
+            await send_wrapper({"type": "http.response.start", "status": status, "headers": headers + (extra or [])})
             await send_wrapper({"type": "http.response.body", "body": body})
 
         try:
@@ -91,7 +91,7 @@ class GuardMiddleware:
                     path=path,
                     request_id=request_id,
                 )
-                await reply(429, "rate_limited")
+                await reply(429, "rate_limited", [(b"retry-after", str(self.limiter.retry_after(group, ip)).encode())])
                 return
 
             headers = dict(scope.get("headers", []))

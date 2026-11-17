@@ -36,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _urlError = error);
     if (error == null) {
       _url!.text = settings.serverUrl;
-      messenger.showSnackBar(SnackBar(content: Text(settings.demoMode ? '데모 데이터로 전환했습니다' : '서버 주소를 저장했습니다')));
+      messenger.showSnackBar(SnackBar(content: Text(settings.configured ? '서버 주소를 저장했습니다' : '서버 주소를 지웠습니다')));
     }
   }
 
@@ -60,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (context, _) => ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            const SectionTitle('서버 주소', subtitle: '비워 두면 앱에 들어 있는 데모 데이터를 보여 줍니다'),
+            const SectionTitle('서버 주소', subtitle: '같은 Wi-Fi 의 PC 서버는 http://<PC IP>:8000, 배포한 서버는 https:// 주소'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -70,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: _url,
                     keyboardType: TextInputType.url,
                     decoration: InputDecoration(
-                      hintText: 'https://radar.example.com',
+                      hintText: 'http://192.168.0.10:8000',
                       errorText: _urlError,
                       errorMaxLines: 2,
                       border: const OutlineInputBorder(),

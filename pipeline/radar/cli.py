@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import os
 import secrets
 import sys
 from pathlib import Path
@@ -16,9 +17,9 @@ from radar.config import DEFAULT_CONFIG_PATH, Config, environ, load_config, read
 from radar.hf_client import HFClient
 from radar.providers import make_provider
 from radar.publish import ServerClient
-from radar.runner import EXIT_CONFIG, EXIT_OK, Runner
+from radar.runner import BACKFILL_MAX_DAYS, EXIT_CONFIG, EXIT_OK, Runner
 
-HF_BASE = "https://huggingface.co"
+HF_BASE = os.environ.get("RADAR_HF_BASE_URL", "https://huggingface.co")  # 시험용 대체 주소
 USER_AGENT = "ai-trend-radar/1.0"
 
 
@@ -29,6 +30,16 @@ def _date(value: str) -> dt.date:
         raise argparse.ArgumentTypeError("YYYY-MM-DD 형식이어야 합니다") from exc
 
 
+def _days(value: str) -> int:
+    try:
+        n = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("숫자여야 합니다") from exc
+    if not 1 <= n <= BACKFILL_MAX_DAYS:
+        raise argparse.ArgumentTypeError(f"1 ~ {BACKFILL_MAX_DAYS} 사이여야 합니다")
+    return n
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="radar", description="AI Trend Radar PC 파이프라인")
     p.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="설정 파일 (기본 %(default)s)")
@@ -37,6 +48,12 @@ def parser() -> argparse.ArgumentParser:
     d.add_argument("--date", type=_date, help="이 날짜만 처리 (YYYY-MM-DD)")
     d.add_argument("--no-backfill", action="store_true", help="빠진 날을 채우지 않음")
     d.add_argument("--dry-run", metavar="FILE", help="업로드하지 않고 결과를 파일로 저장")
+    b = sub.add_parser(
+        "backfill", help="지난 N 일을 수집 · 업로드 → AI 분석 (최근 날부터) → 주 · 월 리포트. 다시 돌리면 이어서"
+    )
+    b.add_argument("--days", type=_days, default=90, help="며칠 치 (1~120, 기본 90)")
+    b.add_argument("--until", type=_date, help="마지막 날짜 (기본: 한국 시간 어제)")
+    b.add_argument("--no-reports", action="store_true", help="주 · 월 리포트를 만들지 않음")
     sub.add_parser("report", help="오늘이 월요일 · 1일이면 주간 · 월간 리포트 문장 업로드")
     c = sub.add_parser("check", help="설정 · 키 · 서버 연결 확인")
     c.add_argument("--offline", action="store_true", help="서버 연결은 확인하지 않음")
@@ -98,6 +115,8 @@ def main(argv: list[str] | None = None) -> int:
     built = build_runner(config)
     if args.command == "report":
         return built.run_reports() or EXIT_OK
+    if args.command == "backfill":
+        return built.run_backfill(days=args.days, until=args.until, reports=not args.no_reports)
     code = built.run_daily(
         explicit=args.date, backfill=not args.no_backfill, dry_run_out=Path(args.dry_run) if args.dry_run else None
     )

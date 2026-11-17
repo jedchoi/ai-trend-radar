@@ -109,30 +109,26 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
-/// 오프라인 · 데모 안내 띠 (BR-A12, BR-A13).
+/// 오프라인 안내 띠 (BR-A12).
 class SourceBanner extends StatelessWidget {
-  const SourceBanner({super.key, required this.offline, required this.demo});
+  const SourceBanner({super.key, required this.offline});
 
   final bool offline;
-  final bool demo;
 
   @override
   Widget build(BuildContext context) {
-    if (!offline && !demo) return const SizedBox.shrink();
+    if (!offline) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    final text = offline ? '오프라인 — 마지막으로 받은 내용을 보여 줍니다' : '데모 데이터 — 설정에서 서버 주소를 넣으면 실제 데이터를 받습니다';
     return Container(
       width: double.infinity,
-      color: offline ? scheme.errorContainer : scheme.secondaryContainer,
+      color: scheme.errorContainer,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(children: [
-        Icon(offline ? Icons.cloud_off : Icons.science_outlined, size: 16,
-            color: offline ? scheme.onErrorContainer : scheme.onSecondaryContainer),
+        Icon(Icons.cloud_off, size: 16, color: scheme.onErrorContainer),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: offline ? scheme.onErrorContainer : scheme.onSecondaryContainer)),
+          child: Text('오프라인 — 마지막으로 받은 내용을 보여 줍니다',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onErrorContainer)),
         ),
       ]),
     );

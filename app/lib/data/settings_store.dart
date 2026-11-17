@@ -34,11 +34,11 @@ class SettingsStore extends ChangeNotifier {
   AskTarget _askTarget;
 
   String get serverUrl => _serverUrl;
-  bool get demoMode => _serverUrl.isEmpty;
+  bool get configured => _serverUrl.isNotEmpty;
   List<String> get interests => List.unmodifiable(_interests);
   AskTarget get askTarget => _askTarget;
 
-  /// BR-A13: 빈 값 = 데모, 아니면 http(s) 주소만. 저장하면 null, 거부하면 이유를 돌려준다.
+  /// BR-A13: 빈 값 = 미설정, 아니면 http(s) 주소만. 저장하면 null, 거부하면 이유를 돌려준다.
   Future<String?> setServerUrl(String value) async {
     var url = value.trim();
     while (url.endsWith('/')) {

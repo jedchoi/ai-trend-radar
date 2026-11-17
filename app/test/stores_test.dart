@@ -15,20 +15,22 @@ void main() {
   });
 
   group('서버 주소 (BR-A13 / AC-15)', () {
-    test('비어 있으면 데모', () {
-      expect(SettingsStore(prefs).demoMode, isTrue);
+    test('비어 있으면 미설정', () {
+      expect(SettingsStore(prefs).configured, isFalse);
     });
 
     test('http(s) 주소만 저장, 끝의 / 제거', () async {
       final s = SettingsStore(prefs);
       expect(await s.setServerUrl('ftp://x.example'), isNotNull);
       expect(await s.setServerUrl('radar.example.com'), isNotNull);
-      expect(s.demoMode, isTrue);
+      expect(s.configured, isFalse);
       expect(await s.setServerUrl(' https://radar.example.com// '), isNull);
       expect(s.serverUrl, 'https://radar.example.com');
       expect(SettingsStore(prefs).serverUrl, 'https://radar.example.com');
+      expect(await s.setServerUrl('http://192.168.0.10:8000'), isNull);
+      expect(s.configured, isTrue);
       expect(await s.setServerUrl(''), isNull);
-      expect(s.demoMode, isTrue);
+      expect(s.configured, isFalse);
     });
 
     test('빌드 기본 주소', () {

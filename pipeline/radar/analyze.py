@@ -132,6 +132,7 @@ class Analyzer:
         self.provider = provider
         self.max_ai_papers = max_ai_papers
         self.markdown = markdown or (lambda pid: None)
+        self.last_ai_units = 0  # 직전 analyze_day 의 AI 작업 수 (한 줄 요약 + 상세 + 세 줄). 전부 실패 판정용
 
     @property
     def provider_name(self) -> str:
@@ -161,9 +162,11 @@ class Analyzer:
         featured_set = set(featured_ids)
         papers = {r.id: none_paper(r, topics.get(r.id, Topic.OTHER), r.id in featured_set) for r in raws}
         fallbacks = 0
+        self.last_ai_units = 0
         if self.provider and raws:
             ai_ids = {r.id for r in sorted(raws, key=lambda r: (-r.upvotes, r.id))[: self.max_ai_papers]}
             ai_raws = [r for r in raws if r.id in ai_ids]
+            self.last_ai_units = len(ai_raws) + sum(r.id in featured_set for r in ai_raws)
             fallbacks += self._briefs(ai_raws, papers)
             for raw in ai_raws:
                 if raw.id in featured_set:
@@ -171,6 +174,7 @@ class Analyzer:
         featured = [papers[i] for i in featured_ids if i in papers]
         headline = none_headline(featured)
         if self.provider and featured:
+            self.last_ai_units += 1
             got = self._ask_model(
                 "headline",
                 {

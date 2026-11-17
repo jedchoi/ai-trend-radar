@@ -220,3 +220,11 @@
 **Context**: Operations 변경 (로컬 시험 배포). Security: SECURITY-01 은 release 기준 유지, http 는 개발 빌드 한정
 
 ---
+## 사용자 입력 (변경 요청)
+**Timestamp**: 2026-11-17T15:30:00Z
+**User Input**: "일단 실제로 hugginface에서 3개월치를 받아와서 실제로 분석하로 로컬db에 넣든 docker로 가상환경을 띄워서 넣든. 더 좋은방법으로 실제 데이터를 볼수있도록 만들어줘 demo는 필요업성"
+**AI Response**: "로컬 SQLite (Docker 없이) 를 추천 · 선택. radar backfill (BR-P19 ~ BR-P22): 1단계 수집 → AI 없이 바로 업로드, 2단계 AI 분석 최근 날부터 (재개 가능), 3단계 주 · 월 리포트. AI 자동 감지 (claude → gemini CLI → Ollama → none). 데모 제거: 앱 데모 모드 · 자산, local-server --demo. 시험 중 업로드 429 발견 → 서버 Retry-After + 파이프라인 대기 (BR-P23). tool/local-backfill.sh, tool/local-app.sh 추가. 실제 Hugging Face 호출은 이 환경에서 차단 → 가짜 HF 서버 · 가짜 claude CLI 로 90일 전체 흐름 확인 (61초)"
+**Context**: Requirements 변경 (BR-A13 데모 제거, BR-P19 ~ BR-P23 추가), TDD (RED 확인 후 GREEN): server 72 · pipeline 96 · integration 3 passed. 앱은 Flutter 가 없어 미실행 → 사용자 Mac 에서 flutter test 필요
+**Security 준수**: http 는 로컬 · 개발 빌드 한정 유지, 토큰 .local 권한 600, 업로드 한도는 로컬 실행에서만 600
+
+---

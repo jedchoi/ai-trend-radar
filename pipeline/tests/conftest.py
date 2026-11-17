@@ -35,11 +35,13 @@ class FakeHF:
         trending: dict | None = None,
         markdown: dict | None = None,
         fail: dict | None = None,
+        fail_dates: set | None = None,
     ):
         self.days = days or {}
         self.trending = trending or {"models": [], "datasets": [], "spaces": []}
         self.markdown = markdown or {}
         self.fail = fail or {}  # path → [status, ...] 순서대로 먼저 반환
+        self.fail_dates = fail_dates or set()  # 이 날짜의 daily_papers 는 항상 500
         self.calls: list[str] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -47,6 +49,8 @@ class FakeHF:
         self.calls.append(f"{path}?{request.url.query.decode()}")
         if self.fail.get(path):
             return httpx.Response(self.fail[path].pop(0))
+        if path == "/api/daily_papers" and params.get("date") in self.fail_dates:
+            return httpx.Response(500)
         if path == "/api/daily_papers":
             items = self.days.get(params["date"], [])
             p, limit = int(params.get("p", 0)), int(params["limit"])

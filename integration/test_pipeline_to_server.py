@@ -137,3 +137,33 @@ def test_wrong_token_is_rejected_end_to_end(server, tmp_path):
     with pytest.raises(UploadError) as exc:
         client.upload_digest(DigestPayload(date=dt.date(2026, 11, 16), provider="none", papers=[], hub=[]))
     assert exc.value.status == 401
+
+
+def test_backfill_fills_real_server(server, tmp_path, monkeypatch):
+    # 백필 → 실제 서버: 날짜 목록 · 트렌드 · 리포트가 앱 API 로 보인다
+    monkeypatch.setenv("RADAR_IT_TOKEN", TOKEN)
+    days = {f"2026-11-{d:02d}": [hf_item(f"2611.{d:02d}{i:03d}", f"Agent memory paper {d}-{i}", i, ["Agent"])
+                                 for i in range(4)] for d in range(2, 17)}
+    config = Config(
+        server=ServerConfig(url=server, token_env="RADAR_IT_TOKEN"),
+        ai=AIConfig(provider="none"),
+        collect=CollectConfig(models=1, datasets=1, spaces=1),
+        paths=PathsConfig(data_dir=str(tmp_path / "bf")),
+    )
+    runner = Runner(
+        config=config,
+        hf=fake_hf(days),
+        server=ServerClient(httpx.Client(base_url=server), token=TOKEN, sleep=lambda s: None),
+        analyzer=Analyzer(provider=None, max_ai_papers=60),
+        now=lambda: dt.datetime(2026, 11, 17, 3, 0, tzinfo=dt.UTC),
+        sleep=lambda s: None,
+    )
+    assert runner.run_backfill(days=15) == EXIT_OK
+    with httpx.Client(base_url=server) as app:
+        items = app.get("/api/v1/digests?limit=90").json()["items"]
+        assert len(items) == 15 and items[0]["date"] == "2026-11-16" and items[-1]["date"] == "2026-11-02"
+        assert app.get("/api/v1/trends/periods").json()["weeks"] == ["2026-W47", "2026-W46", "2026-W45"]
+        week = app.get("/api/v1/trends/weekly/2026-W46").json()
+        assert week["paper_count"] == 28 and week["narrative"]
+        latest = app.get("/api/v1/digests/latest").json()
+        assert latest["hub"] and not app.get("/api/v1/digests/2026-11-10").json()["hub"]

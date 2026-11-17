@@ -100,7 +100,7 @@ class _TodayScreenState extends State<TodayScreen> {
           child: ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [
-              SourceBanner(offline: c.offline, demo: c.demo),
+              SourceBanner(offline: c.offline),
               _DateChips(
                 dates: _dates!.data ?? const [],
                 selected: digest.date,

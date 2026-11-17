@@ -10,6 +10,16 @@ import httpx
 from radar.models import DigestPayload
 from radar.retry import with_retry
 
+RATE_LIMIT_RETRIES = 3
+RATE_LIMIT_MAX_WAIT_S = 120
+
+
+def _retry_after(response: httpx.Response) -> int:
+    try:
+        return max(1, min(RATE_LIMIT_MAX_WAIT_S, int(response.headers.get("retry-after", "60"))))
+    except ValueError:
+        return 60
+
 
 class UploadError(RuntimeError):
     def __init__(self, message: str, status: int | None = None):
@@ -28,7 +38,13 @@ class ServerClient:
         if body is not None:
             headers["content-type"] = "application/json"
         try:
-            return with_retry(lambda: self.http.request(method, path, content=body, headers=headers), self.sleep)
+            response = with_retry(lambda: self.http.request(method, path, content=body, headers=headers), self.sleep)
+            for _ in range(RATE_LIMIT_RETRIES):  # 백필처럼 업로드가 몰리면 서버가 알려준 만큼 기다린다
+                if response.status_code != 429:
+                    break
+                self.sleep(_retry_after(response))
+                response = self.http.request(method, path, content=body, headers=headers)
+            return response
         except httpx.TransportError as exc:
             raise UploadError(f"서버 연결 실패 ({type(exc).__name__})") from exc
 

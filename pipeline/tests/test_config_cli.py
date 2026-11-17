@@ -138,3 +138,28 @@ def test_prompts_are_plain_files():
     names = {p.stem: p.read_text("utf-8").splitlines()[0] for p in prompts.glob("*.md")}
     assert names == {"brief": "BRIEF", "detail": "DETAIL", "headline": "HEADLINE", "report": "REPORT"}
     assert json.dumps(names)
+
+
+def test_cli_backfill_wiring_and_limits(tmp_path, monkeypatch):
+    # BR-P19: radar backfill --days N (1~120)
+    seen = {}
+
+    class FakeRunner:
+        def __init__(self, **kw):
+            pass
+
+        def run_backfill(self, days, until, reports):
+            seen.update(days=days, until=until, reports=reports)
+            return 0
+
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setenv("OK_TOKEN", "t")
+    path = tmp_path / "c.toml"
+    path.write_text(f'[server]\nurl = "https://a.example"\ntoken_env = "OK_TOKEN"\n[paths]\ndata_dir = "{tmp_path}"\n')
+    assert cli.main(["--config", str(path), "backfill"]) == 0
+    assert seen == {"days": 90, "until": None, "reports": True}
+    assert cli.main(["--config", str(path), "backfill", "--days", "30", "--until", "2026-11-01", "--no-reports"]) == 0
+    assert seen["days"] == 30 and seen["until"].isoformat() == "2026-11-01" and seen["reports"] is False
+    for bad in ("0", "121", "x"):
+        with pytest.raises(SystemExit):
+            cli.main(["--config", str(path), "backfill", "--days", bad])

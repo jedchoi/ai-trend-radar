@@ -151,9 +151,12 @@ void main() {
     expect(find.text('다시 시도'), findsWidgets);
   });
 
-  testWidgets('서버 주소가 없으면 데모 (BR-A13)', (tester) async {
-    await pumpApp(tester, services: await makeServices(prefs: const {}));
-    expect(find.textContaining('데모 데이터'), findsWidgets);
+  testWidgets('서버 주소가 없으면 설정 안내, 넣으면 불러옴 (BR-A13)', (tester) async {
+    final services = await pumpApp(tester, services: await makeServices(prefs: const {}));
+    expect(find.textContaining('서버 주소를 입력하세요'), findsWidgets);
+    expect(find.text('오늘의 세 줄'), findsNothing);
+    await services.settings.setServerUrl(testServer);
+    await tester.pumpAndSettle();
     expect(find.text('오늘의 세 줄'), findsOneWidget);
   });
 

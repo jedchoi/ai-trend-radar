@@ -103,3 +103,12 @@ def test_access_log_line(client, caplog):
     assert record["path"] == "/api/v1/health"
     assert record["status"] == 200
     assert "duration_ms" in record
+
+
+def test_rate_limit_tells_client_when_to_retry(tmp_path):
+    # NFR-S05: 429 에 Retry-After (초) 를 붙여 파이프라인이 기다렸다 다시 보낼 수 있게
+    with _client(tmp_path, ingest_rate_per_min=1, public_rate_per_min=100) as c:
+        c.post("/api/v1/ingest/daily", json=make_digest("2026-11-13"), headers=AUTH)
+        resp = c.post("/api/v1/ingest/daily", json=make_digest("2026-11-13"), headers=AUTH)
+    assert resp.status_code == 429
+    assert 1 <= int(resp.headers["retry-after"]) <= 60

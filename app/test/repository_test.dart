@@ -2,7 +2,6 @@ import 'package:ai_trend_radar/data/api_client.dart';
 import 'package:ai_trend_radar/data/cache_store.dart';
 import 'package:ai_trend_radar/data/repository.dart';
 import 'package:ai_trend_radar/data/settings_store.dart';
-import 'package:ai_trend_radar/models/json.dart';
 import 'package:ai_trend_radar/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -11,20 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers.dart';
 
-class FakeDemo implements RadarApi {
-  final paths = <String>[];
-
-  @override
-  Future<Json> getJson(String path) async {
-    paths.add(path);
-    return sample('digest_latest');
-  }
-}
-
-Future<RadarRepository> repo(http.Client client, {String url = testServer, RadarApi? demo}) async {
+Future<RadarRepository> repo(http.Client client, {String url = testServer}) async {
   SharedPreferences.setMockInitialValues({'settings:server_url': url});
   final prefs = await SharedPreferences.getInstance();
-  return RadarRepository(settings: SettingsStore(prefs), cache: CacheStore(prefs), client: client, demo: demo);
+  return RadarRepository(settings: SettingsStore(prefs), cache: CacheStore(prefs), client: client);
 }
 
 void main() {
@@ -81,11 +70,8 @@ void main() {
     });
   });
 
-  test('주소가 없으면 데모 (BR-A13)', () async {
-    final demo = FakeDemo();
-    final r = await repo(MockClient((_) async => throw StateError('네트워크를 쓰면 안 됨')), url: '', demo: demo);
-    final loaded = await r.latestDigest();
-    expect(loaded.demo, isTrue);
-    expect(demo.paths, ['/api/v1/digests/latest']);
+  test('주소가 없으면 네트워크 없이 설정 안내 (BR-A13)', () async {
+    final r = await repo(MockClient((_) async => throw StateError('네트워크를 쓰면 안 됨')), url: '');
+    expect(r.latestDigest(), throwsA(isA<ApiException>().having((e) => e.notConfigured, 'notConfigured', true)));
   });
 }

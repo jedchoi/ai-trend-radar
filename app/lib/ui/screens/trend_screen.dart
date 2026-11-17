@@ -88,7 +88,7 @@ class _TrendScreenState extends State<TrendScreen> {
           child: ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [
-              SourceBanner(offline: r.offline, demo: r.demo),
+              SourceBanner(offline: r.offline),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: SegmentedButton<String>(
