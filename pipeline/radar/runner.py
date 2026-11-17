@@ -88,8 +88,12 @@ class Runner:
         with (self.data / "runs.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
-    def config_problems(self) -> list[str]:
-        return check_ai_config(self.config.ai, self.env) + check_server_config(self.config.server, self.env)
+    def config_problems(self, upload: bool = True) -> list[str]:
+        """BR-P11. 업로드하지 않는 실행 (--dry-run) 은 서버 주소 · 토큰을 요구하지 않는다."""
+        problems = check_ai_config(self.config.ai, self.env)
+        if upload:
+            problems += check_server_config(self.config.server, self.env)
+        return problems
 
     # ---------- 하루 처리 ----------
 
@@ -123,7 +127,7 @@ class Runner:
             raise StepFailed(stage, exc) from exc
 
     def run_daily(self, explicit: dt.date | None = None, backfill: bool = True, dry_run_out: Path | None = None) -> int:
-        problems = self.config_problems()
+        problems = self.config_problems(upload=dry_run_out is None)
         if problems:
             for p in problems:
                 print(f"설정 문제: {p}")

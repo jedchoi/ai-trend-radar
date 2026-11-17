@@ -16,7 +16,7 @@
 
 | 항목 | 결과 |
 | --- | --- |
-| `flutter analyze`, `flutter test` | ⚠️ 미실행: 이 세션에는 Flutter · Dart SDK 를 받을 수 없음 (pub.dev, Google 저장소 접근 차단). CI (`.github/workflows/ci.yml` 의 app job, Flutter 3.41.7) 또는 Mac 에서 `cd app && tool/bootstrap.sh && flutter test` 로 확인 필요 |
+| `flutter test` | 40 passed (사용자 Mac, 2026-11-17). `flutter analyze` 는 CI 에서 |
 | 코드 검토 | 사람이 읽는 수준의 정적 검토만 함 (import · 타입 · 폐기 예정 API 회피: `withValues`, `surfaceContainerHighest`, Radio 대신 ChoiceChip) |
 | 예시 응답 동기화 | `contract/samples` == `app/assets/demo` (diff 통과) |
 

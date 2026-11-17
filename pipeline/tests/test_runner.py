@@ -215,3 +215,22 @@ def test_ai_fallback_count_recorded(config):
     hf = FakeHF(days={"2026-11-16": [hf_item("2611.00001")]}, trending=trending())
     build(config, hf, FakeServer(), provider=provider).run_daily()
     assert read_runs(config)[-1]["ai_fallbacks"] == 3
+
+
+def test_dry_run_does_not_need_server_settings(config, tmp_path, monkeypatch):
+    # 버그: --dry-run 은 업로드를 하지 않으므로 서버 주소 · 토큰 없이 돌아야 한다
+    from radar.config import ServerConfig
+
+    monkeypatch.delenv("RADAR_TEST_TOKEN")
+    no_server = dataclasses.replace(config, server=ServerConfig(url="", token_env="RADAR_TEST_TOKEN"))
+    hf = FakeHF(days={"2026-11-16": [hf_item("2611.00001")]}, trending=trending())
+    out = tmp_path / "out.json"
+    assert build(no_server, hf, FakeServer()).run_daily(dry_run_out=out) == EXIT_OK
+    assert json.loads(out.read_text())[0]["papers"][0]["id"] == "2611.00001"
+
+
+def test_dry_run_still_checks_ai_settings(config, tmp_path):
+    bad = dataclasses.replace(config, ai=AIConfig(provider="anthropic", model="m", api_key_env="NO_SUCH_KEY"))
+    assert (
+        build(bad, FakeHF(trending=trending()), FakeServer()).run_daily(dry_run_out=tmp_path / "o.json") == EXIT_CONFIG
+    )

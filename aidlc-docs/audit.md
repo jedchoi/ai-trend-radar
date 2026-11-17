@@ -190,3 +190,18 @@
 **Context**: workflow 완료
 
 ---
+## 사용자 입력 (요청)
+**Timestamp**: 2026-11-17T14:40:00Z
+**User Input**: "/Volumes/Mac990/Project 아래에 프로젝트 폴더를 만들고 구현하자."
+**AI Response**: "이미 /Volumes/Mac990/Project/ai-trend-radar 에 구현 · 커밋되어 있음을 확인하고 안내, Mac 에서 확인할 명령 제시"
+**Context**: 작업 공간 위치 확인
+
+---
+
+## 사용자 입력 (실행 결과 보고)
+**Timestamp**: 2026-11-17T14:50:00Z
+**User Input**: (터미널 출력) "cd /Volumes/Mac990/Project/ai-trend-radar/app && tool/bootstrap.sh && flutter test ... 00:05 +40: All tests passed! ... cd ../pipeline && uv run radar daily --dry-run /tmp/out.json ... 설정 문제: [server] url 이 비었거나 형식이 틀립니다 (예: https://radar.example.com) / 설정 문제: 업로드 토큰이 없습니다: 환경 변수 RADAR_INGEST_TOKEN"
+**AI Response**: "mobile-app 테스트 40 passed 기록. --dry-run 이 서버 설정을 요구하는 결함 확인 → 실패 테스트 추가 (RED 1 실패) → runner.config_problems(upload=...) 로 수정 (GREEN 85 passed). 문서 갱신: BR-P11, build-and-test, phase-check-construction 2회차 통과"
+**Context**: 버그 수정 (Construction 재오픈 없이 pc-pipeline Code Generation 범위 안 수정, CG-7 기록)
+
+---
