@@ -101,19 +101,22 @@ def test_translates_short_first_then_long_and_uploads(config):
     items = uploaded(server)
     keys = [(i["kind"], i["key"], i["lang"], tuple(sorted(i["fields"]))) for i in items]
     assert ("digest", "2026-11-16", "en", ("headline",)) in keys
-    assert ("paper", "2611.00001", "ko", ("abstract", "title")) in keys
+    assert ("paper", "2611.00001", "ko", ("title",)) in keys  # 논문 원문 (초록 · 본문) 은 영어 그대로 (FR-34 개정)
     assert ("paper", "2611.00001", "en", ("detail", "glossary", "one_liner")) in keys
     assert ("paper", "2611.00002", "en", ("one_liner",)) in keys
     assert ("news", "a/post", "ko", ("title",)) in keys
     assert ("news", "a/post", "en", ("key_points", "summary")) in keys
     assert ("report", "week:2026-W47", "en", ("narrative",)) in keys
     long = [k for k in keys if k[3] in (("content",), ("full_text",))]
-    assert long == [("news", "a/post", "ko", ("content",)), ("paper", "2611.00001", "ko", ("full_text",))]
+    assert long == [("news", "a/post", "ko", ("content",))]
+    assert all("abstract" not in i["fields"] and "full_text" not in i["fields"] for i in items)
     assert keys.index(long[0]) > max(i for i, k in enumerate(keys) if k[3] not in (("content",), ("full_text",)))
     kinds = [c[0] for c in provider.calls]
-    # 묶음: 논문 ko 6편 → 2번, en 2번, 뉴스 제목 1번, 세 줄 · 뉴스 en · 리포트 각 1번
-    assert kinds.count("TRANSLATE") == 2 + 2 + 1 + 3
-    assert kinds.count("TRANSLATE_TEXT") >= 2
+    # 묶음: 논문 제목 (ko) 6편 → 1번 (10편씩), 요약 (en) 6편 → 2번 (5편씩),
+    # 뉴스 제목 1번, 세 줄 · 뉴스 en · 리포트 각 1번
+    assert kinds.count("TRANSLATE") == 1 + 2 + 1 + 3
+    assert kinds.count("TRANSLATE_TEXT") >= 1
+    assert all("Long body" not in u for _, u in provider.calls)  # 논문 본문은 번역 요청하지 않음
     assert next(i for i in items if i["kind"] == "paper" and i["lang"] == "en")["fields"]["detail"]["what"] == "T:무엇"
     # 2026-09-01 은 기간 (30일) 밖
     assert all(i["key"] != "2026-09-01" for i in items)
@@ -163,7 +166,7 @@ def test_bad_output_is_retried_then_skipped(config):
     assert "report" not in kinds and "paper" in kinds
     assert all(i["fields"].keys() - {"content", "full_text"} for i in uploaded(server))  # 긴 본문 실패 → 없음
     record = json.loads((runner.data / "runs.jsonl").read_text().splitlines()[-1])
-    assert record["stage"] == "translate" and record["failed"] >= 3
+    assert record["stage"] == "translate" and record["failed"] >= 2  # 리포트 · 뉴스 본문
     state = json.loads((runner.data / "translated.json").read_text())
     assert "report:week:2026-W47:en:short" not in state
 

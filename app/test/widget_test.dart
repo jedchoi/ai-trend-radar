@@ -229,7 +229,7 @@ void main() {
     await tester.scrollUntilVisible(abstractTile, 300, scrollable: find.byType(Scrollable).first);
     await tester.tap(abstractTile);
     await tester.pumpAndSettle();
-    expect(find.textContaining('(예시 번역)'), findsWidgets); // 3주기: 한국어 번역 초록 (paper_detail_ko)
+    expect(find.textContaining('(예시 초록)'), findsWidgets); // 논문 원문은 영어 그대로 (FR-34 개정)
     final reader = find.text('본문 원문 읽기');
     await tester.scrollUntilVisible(reader, 300, scrollable: find.byType(Scrollable).first);
     await tester.scrollUntilVisible(find.text('arXiv'), 300, scrollable: find.byType(Scrollable).first);
@@ -237,8 +237,8 @@ void main() {
     await tester.scrollUntilVisible(reader, -300, scrollable: find.byType(Scrollable).first);
     await tester.tap(reader);
     await tester.pumpAndSettle();
-    expect(find.text('방법'), findsNothing); // '2 방법' 은 문단 (소제목 표시는 ## 만)
-    expect(find.textContaining('1 서론'), findsOneWidget);
+    expect(find.text('Method'), findsNothing); // '2 Method' 는 문단 (소제목 표시는 ## 만)
+    expect(find.textContaining('1 Introduction'), findsOneWidget);
   });
 
   testWidgets('읽은 논문은 목록에 읽음 표시 (AC-26-2)', (tester) async {

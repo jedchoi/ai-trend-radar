@@ -222,8 +222,7 @@ Line300 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, 
 class PaperTranslation(Strict):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)] | None = None
     one_liner: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)] | None = None
-    abstract: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)] | None = None
-    full_text: Annotated[str, StringConstraints(min_length=1, max_length=FULL_TEXT_MAX)] | None = None
+    # 논문 원문 (초록 · 본문) 은 번역하지 않는다 (FR-34 개정 2026-11-18): abstract · full_text 를 보내면 422
     detail: PaperDetail | None = None
     glossary: list[GlossaryItem] | None = Field(default=None, max_length=5)
 

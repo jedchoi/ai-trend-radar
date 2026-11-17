@@ -1,6 +1,6 @@
 """번역 (C-P10, FR-34 ~ FR-36, BR-P40 ~ BR-P45): 서버의 원본을 읽어 반대 언어 번역을 만들어 미리 올린다.
 
-- 한국어로: 논문 제목 · 초록 · 본문 원문, 뉴스 제목 · 본문 원문
+- 한국어로: 논문 제목, 뉴스 제목 · 본문 원문 (논문 원문 = 초록 · 본문은 영어 그대로, FR-34 개정 2026-11-18)
 - 영어로: 한 줄 요약 · 상세 요약 · 용어 · 오늘의 세 줄 · 뉴스 요약 · 핵심 · 리포트 문장
 - 순서: 짧은 항목 (최근 날부터) → 긴 본문 (최근 것부터). 같은 원본은 한 번만 (해시), 바뀌면 다시
 """
@@ -19,7 +19,8 @@ from typing import Any
 from radar.analyze import RETRY_NOTE, extract_json, fill, load_prompt, split_prompt
 
 LANG_NAMES = {"ko": "Korean (한국어)", "en": "English"}
-PAPER_BATCH = 5
+PAPER_BATCH = 5  # 논문 요약 (영어로)
+PAPER_TITLE_BATCH = 10  # 논문 제목 (한국어로)
 NEWS_TITLE_BATCH = 10
 UPLOAD_BATCH = 20
 UPLOAD_MAX_CHARS = 3_000_000  # 업로드 한 번 (서버 한도 10 MB, 한글 3바이트)
@@ -236,21 +237,15 @@ class Translator:
         short: list[Job] = []
         if digest.get("headline"):
             short.append(Job("digest", day, "en", "short", {"headline": digest["headline"]}))
-        full: list[Job] = []
         for p in digest.get("papers", []):
-            ko = {"title": p["title"]}
-            if p.get("abstract"):
-                ko["abstract"] = p["abstract"]
-            short.append(Job("paper", p["id"], "ko", "short", ko))
+            short.append(Job("paper", p["id"], "ko", "short", {"title": p["title"]}))
             en: dict = {"one_liner": p["one_liner"]}
             if p.get("detail"):
                 en["detail"] = p["detail"]
             if p.get("glossary"):
                 en["glossary"] = p["glossary"]
             short.append(Job("paper", p["id"], "en", "short", en))
-            if p.get("has_full_text"):
-                full.append(Job("paper", p["id"], "ko", "full", {"id": p["id"]}))
-        return short, full
+        return short, []
 
     def _news_jobs(self, news: dict) -> tuple[list[Job], list[Job]]:
         short = [
@@ -316,7 +311,7 @@ class Translator:
                         Job("report", f"{period}:{key}", "en", "short", {"narrative": report["narrative"]})
                     )
         short = [j for j in short + news_short + report_jobs if self.needed(j)]
-        # 긴 본문: 뉴스 → 논문 (각각 최근 것부터)
+        # 긴 본문: 뉴스 본문만 (최근 것부터). 논문 본문은 번역하지 않는다
         full = [j for j in news_full + full if self.needed(j)]
         return short, full
 
@@ -336,10 +331,10 @@ class Translator:
         return found
 
     def _run_short(self, jobs: list[Job]) -> None:
-        papers = {lang: [j for j in jobs if j.kind == "paper" and j.lang == lang] for lang in ("ko", "en")}
-        for lang, group in papers.items():
-            for start in range(0, len(group), PAPER_BATCH):
-                self._batch(lang, group[start : start + PAPER_BATCH])
+        for lang, size in (("ko", PAPER_TITLE_BATCH), ("en", PAPER_BATCH)):
+            group = [j for j in jobs if j.kind == "paper" and j.lang == lang]
+            for start in range(0, len(group), size):
+                self._batch(lang, group[start : start + size])
         titles = [j for j in jobs if j.kind == "news" and j.lang == "ko"]
         for start in range(0, len(titles), NEWS_TITLE_BATCH):
             self._batch("ko", titles[start : start + NEWS_TITLE_BATCH])
@@ -361,11 +356,7 @@ class Translator:
 
     def _run_full(self, jobs: list[Job]) -> None:
         for n, job in enumerate(jobs, start=1):
-            if job.kind == "news":
-                text, field = job.source["content"], "content"
-            else:
-                text = self.server.get_json(f"/api/v1/papers/{job.key}").get("paper", {}).get("full_text") or ""
-                field = "full_text"
+            text, field = job.source["content"], "content"
             if not text.strip():
                 continue
             started = self.clock()

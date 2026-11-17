@@ -1,5 +1,6 @@
 """뉴스 (FR-25, BR-P30 ~ BR-P34)."""
 
+import dataclasses
 import datetime as dt
 import json
 
@@ -221,7 +222,9 @@ def test_feed_failure_does_not_fail_daily(config):
     runner, _ = make_runner(config, hf, server)
     assert runner.run_daily() == EXIT_OK
     lines = [json.loads(x) for x in (config.data_path / "runs.jsonl").read_text().splitlines()]
-    assert lines[-1]["stage"] == "news" and lines[-1]["status"] == "failed"
+    news = [x for x in lines if x["stage"] == "news"]
+    assert news and news[0]["status"] == "failed"
+    assert lines[-1]["status"] == "ok"  # 뉴스가 먼저 실패해도 논문은 그대로 처리
 
 
 def test_news_disabled_does_nothing(config):
@@ -229,3 +232,17 @@ def test_news_disabled_does_nothing(config):
     runner, _ = make_runner(config, hf, server)
     assert runner.run_news(days=7) == EXIT_OK
     assert server.news == [] and hf.calls == []
+
+
+def test_daily_uploads_news_before_papers(config):
+    # 2026-11-18 사용자 요청 "뉴스먼저 나오게 해주면 안될까": 매일 실행은 뉴스 → 논문
+    from tests.conftest import hf_item
+
+    config = news_config(config)
+    config = dataclasses.replace(config, collect=dataclasses.replace(config.collect, news_days=7))
+    pages = {"/blog/feed.xml": FEED, "/blog/ggml-org/llama-cpp-v1": ARTICLE_HTML}
+    hf = FakeHF(days={"2026-11-16": [hf_item("2611.00001")]}, pages=pages)
+    server = FakeServer()
+    runner, _ = make_runner(config, hf, server)
+    assert runner.run_daily(backfill=False) == EXIT_OK
+    assert [e[0] for e in server.events] == ["news", "daily"]

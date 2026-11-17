@@ -99,6 +99,18 @@ void main() {
       expect(find.text('Translation pending'), findsNothing);
       await tester.pageBack();
       await tester.pumpAndSettle();
+      await services.settings.setLanguage('ko');
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Who Remembers What?').first);
+      await tester.pumpAndSettle();
+      // 한국어: 논문 제목은 번역, 원문 (초록 · 본문) 은 영어 그대로 (FR-34 개정, AC-29-1)
+      expect(find.textContaining('누가 무엇을 기억하나?'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('원문'), 300, scrollable: find.byType(Scrollable).first);
+      expect(find.text('원문'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await services.settings.setLanguage('en');
+      await tester.pumpAndSettle();
       final other = find.textContaining('G-STAR');
       await tester.scrollUntilVisible(other, 400, scrollable: find.byType(Scrollable).first);
       await tester.tap(other.first);

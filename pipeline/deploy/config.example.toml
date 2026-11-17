@@ -39,4 +39,4 @@ data_dir = "~/.local/share/ai-trend-radar"
 enabled = true
 days = 90          # 매일 실행에서 살펴볼 기간 (이미 번역된 것은 건너뜀)
 max_minutes = 180  # 한 번 실행의 번역 시간 상한 (0 = 무제한), 넘으면 다음 실행에서 이어서
-full_text = true   # 논문 · 뉴스 원문 본문까지 번역
+full_text = true   # 뉴스 본문까지 번역 (논문 초록 · 본문은 영어 원문 그대로)

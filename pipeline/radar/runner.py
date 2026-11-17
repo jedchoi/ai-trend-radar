@@ -160,6 +160,9 @@ class Runner:
         target = self.today_kst() - dt.timedelta(days=1)  # BR-P01
         last = self.last_success() if backfill else None
         days = plan_dates(last, target, explicit)
+        if dry_run_out is None:
+            # 뉴스 먼저 (2026-11-18 사용자 요청). BR-P34: 뉴스 실패는 일일 결과에 영향 없음
+            self.run_news(self.config.collect.news_days)
         dry_payloads = []
         for day in days:
             started = time.monotonic()
@@ -202,8 +205,6 @@ class Runner:
             Path(dry_run_out).write_text(json.dumps(dry_payloads, ensure_ascii=False, indent=2), "utf-8")
         if not days:
             print("처리할 날짜 없음 (이미 최신)")
-        if dry_run_out is None:
-            self.run_news(self.config.collect.news_days)  # BR-P34: 뉴스 실패는 일일 결과에 영향 없음
         return EXIT_OK
 
     # ---------- 원문 (FR-26, BR-P31) ----------
@@ -423,6 +424,11 @@ class Runner:
         failed = 0
         print(f"백필 {dates[0]} ~ {last_day} ({len(dates)}일), AI: {provider}")
 
+        # 뉴스 먼저 (AI 없이, 몇 분): 논문 수집 · AI 단계보다 앞에 (BR-P34, 2026-11-18 사용자 요청)
+        news_days = (self.today_kst() - dates[0]).days + 1
+        if self.config.collect.news:
+            self.run_news(news_days, analyzer=quick)
+
         # 1단계
         collected: list[dt.date] = []
         for i, day in enumerate(dates, start=1):
@@ -469,11 +475,6 @@ class Runner:
             print(f"[{i}/{len(dates)}] {day} 올림 ({len(payload.papers)}편)")
         if not failed:
             self._mark_success(last_day)
-
-        # 뉴스 먼저 (AI 없이, 몇 분): AI 단계는 몇 시간 걸릴 수 있어 그 뒤로 미루지 않는다 (BR-P34)
-        news_days = (self.today_kst() - dates[0]).days + 1
-        if self.config.collect.news:
-            self.run_news(news_days, analyzer=quick)
 
         # 2단계
         if self.analyzer.provider is not None:

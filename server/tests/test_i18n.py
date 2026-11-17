@@ -40,9 +40,7 @@ def seed(client, ingest):
 def seed_translations(client):
     resp = send(
         client,
-        tr(
-            "paper", "2611.00001", "ko", title="에이전트 기억", abstract="기억을 연구한다.", full_text="# 소개\n\n본문."
-        ),
+        tr("paper", "2611.00001", "ko", title="기억하는 에이전트"),
         tr(
             "paper",
             "2611.00001",
@@ -73,16 +71,19 @@ def test_translation_upload_requires_token_and_valid_shape(client):
     assert send(client, tr("news", "a/b", "ko", content="x" * 200_001)).status_code == 422
     assert send(client, *[tr("paper", f"2611.{i:05d}", "ko", title="t") for i in range(51)]).status_code == 422
     assert send(client, tr("paper", "2611.00001", "ko", title="제목")).status_code == 200
+    # FR-34 개정 (2026-11-18): 논문 원문 (초록 · 본문) 은 번역하지 않는다
+    assert send(client, tr("paper", "2611.00001", "ko", abstract="초록")).status_code == 422
+    assert send(client, tr("paper", "2611.00001", "ko", full_text="본문")).status_code == 422
 
 
 def test_fields_are_merged_and_logged(client, settings):
     # BR-S41: 키 단위로 합친다 (짧은 항목 먼저, 본문은 나중에)
-    send(client, tr("paper", "2611.00001", "ko", title="제목", abstract="초록"))
-    send(client, tr("paper", "2611.00001", "ko", full_text="본문"))
-    send(client, tr("paper", "2611.00001", "ko", title="새 제목"))
+    send(client, tr("news", "a/b", "ko", title="제목", content="본문"))
+    send(client, tr("news", "a/b", "ko", content="새 본문"))
+    send(client, tr("news", "a/b", "ko", title="새 제목"))
     with psycopg.connect(settings.database_url) as conn:
         fields = conn.execute("select fields from translations").fetchone()[0]
-        assert fields == {"title": "새 제목", "abstract": "초록", "full_text": "본문"}
+        assert fields == {"title": "새 제목", "content": "새 본문"}
         assert conn.execute("select count(*) from ingest_log where kind = 'translation'").fetchone()[0] == 3
 
 
@@ -98,7 +99,8 @@ def test_digest_in_english_and_korean(client, ingest):
     assert p1["title"] == "Agent Memory"  # 영어 원문 그대로
     ko = client.get("/api/v1/digests/2026-11-13?lang=ko").json()
     p1 = next(p for p in ko["papers"] if p["id"] == "2611.00001")
-    assert p1["title"] == "에이전트 기억" and p1["abstract"] == "기억을 연구한다."
+    assert p1["title"] == "기억하는 에이전트"
+    assert p1["abstract"] == "We study memory."  # 논문 원문은 영어 그대로 (FR-34 개정)
     assert p1["full_text"] is None  # 목록에는 긴 필드 없음
     p2 = next(p for p in ko["papers"] if p["id"] == "2611.00002")
     assert p2["title"] == "Other" and p2["untranslated"] is True
@@ -123,14 +125,15 @@ def test_paper_detail_and_related_and_search(client, ingest):
     seed(client, ingest)
     seed_translations(client)
     ko = client.get("/api/v1/papers/2611.00001?lang=ko").json()["paper"]
-    assert ko["full_text"] == "# 소개\n\n본문." and ko["title"] == "에이전트 기억"
+    assert ko["title"] == "기억하는 에이전트"
+    assert ko["full_text"] == "# Intro\n\nBody text." and ko["abstract"] == "We study memory."
     en = client.get("/api/v1/papers/2611.00001?lang=en").json()["paper"]
     assert en["full_text"] == "# Intro\n\nBody text."
     found = client.get("/api/v1/papers?q=에이전트&lang=ko").json()
     assert [p["id"] for p in found["items"]] == ["2611.00001"]
-    assert found["items"][0]["title"] == "에이전트 기억"
+    assert found["items"][0]["title"] == "기억하는 에이전트"
     # FR-37: 번역 낱말로 찾기 (원문은 영어)
-    assert client.get("/api/v1/papers?q=기억을").json()["total"] == 1
+    assert client.get("/api/v1/papers?q=기억하는").json()["total"] == 1
 
 
 def test_news_list_and_detail(client, ingest):
@@ -153,7 +156,7 @@ def test_trend_report_narrative(client, ingest):
     assert week["narrative"] == "This week's report" and week["untranslated"] is False
     ko_week = client.get("/api/v1/trends/weekly/2026-W46?lang=ko").json()
     assert ko_week["narrative"] == "이번 주 리포트" and ko_week["untranslated"] is True
-    assert ko_week["top_papers"][0]["title"] in ("에이전트 기억", "Other")
+    assert ko_week["top_papers"][0]["title"] in ("기억하는 에이전트", "Other")
     assert client.get("/api/v1/trends/weekly/2026-W46?lang=jp").status_code == 422
 
 
@@ -162,7 +165,7 @@ def test_translations_survive_reupload(client, ingest):
     seed(client, ingest)
     seed_translations(client)
     ingest(make_digest("2026-11-13", [make_paper("2611.00001", title="Agent Memory", one_liner="다시 분석")]))
-    assert client.get("/api/v1/papers/2611.00001?lang=ko").json()["paper"]["title"] == "에이전트 기억"
-    assert client.get("/api/v1/papers?q=기억을").json()["total"] == 1
+    assert client.get("/api/v1/papers/2611.00001?lang=ko").json()["paper"]["title"] == "기억하는 에이전트"
+    assert client.get("/api/v1/papers?q=기억하는").json()["total"] == 1
     upload(client, [make_news("ggml-org/llama-cpp-v1", title="llama.cpp v1", content="Original body v2.")])
     assert client.get("/api/v1/news?q=번역된").json()["total"] == 1

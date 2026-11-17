@@ -15,3 +15,12 @@
 | NFR-15 성능 | - | - | 목록은 긴 필드 빼고 번역 조회 (`fields - 'full_text' - 'content'`) | perf 테스트 p95 127 ms | ✅ |
 
 역방향: `tool/radar-daily.sh` 의 매일 서버 갱신 (`radar-up.sh --server-only`) — 새 서버 코드 (번역 API) 를 06:00 에 자동 반영하기 위한 운영 수단 (FR-33 의 배포). 백필 뉴스 순서 수정은 2주기 버그 수정 (audit 00:30). ORPHAN 0, GAP 0. 실행 대기: 앱 테스트, 실제 번역 실행 · 품질 확인.
+
+## 개정 (2026-11-18 01:10)
+
+| 변경 | 반영 위치 | 테스트 |
+| --- | --- | --- |
+| FR-34: 논문 원문 (초록 · 본문) 영어 유지 | requirements · stories (AC-29-1) · cycle3-design (계약 표, BR-P40 · P41 · A35) · `schemas.PaperTranslation` · `i18n.PAPER_FIELDS` · `translate._digest_jobs` · `paper_screen._original` | `test_translation_upload_requires_token_and_valid_shape` (422), `test_digest_in_english_and_korean`, `test_translates_short_first_then_long_and_uploads`, 통합, app `cycle3_test` · `widget_test` |
+| BR-P34: 뉴스 먼저 | cycle2-design · `runner.run_daily` · `runner.run_backfill` | `test_daily_uploads_news_before_papers`, `test_backfill_uploads_news_before_slow_ai_phase` |
+
+GAP 0 · ORPHAN 0 유지.

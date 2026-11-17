@@ -22,7 +22,7 @@ from app.schemas import (
     TrendReport,
 )
 
-PAPER_FIELDS = ("title", "one_liner", "abstract", "full_text", "detail", "glossary")
+PAPER_FIELDS = ("title", "one_liner", "detail", "glossary")  # 논문 원문 (초록 · 본문) 은 영어 그대로
 BRIEF_FIELDS = ("title", "one_liner")
 NEWS_FIELDS = ("title", "summary", "key_points", "content")
 NEWS_BRIEF_FIELDS = ("title", "summary")

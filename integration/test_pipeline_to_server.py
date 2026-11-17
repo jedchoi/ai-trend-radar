@@ -260,7 +260,7 @@ class EchoTranslator:
 
 
 def test_translations_end_to_end(server, tmp_path, monkeypatch):
-    # FR-33 ~ FR-35: 파이프라인이 번역을 미리 올리고, 앱이 lang 으로 읽는다
+    # FR-33 ~ FR-35: 파이프라인이 번역을 미리 올리고, 앱이 lang 으로 읽는다 (논문 원문은 영어 그대로, FR-34 개정)
     from radar.config import TranslateConfig
 
     monkeypatch.setenv("RADAR_IT_TOKEN", TOKEN)
@@ -292,5 +292,5 @@ def test_translations_end_to_end(server, tmp_path, monkeypatch):
         assert en["headline"][0].startswith("[번역] ") and not en["untranslated"]
         ko = app.get("/api/v1/papers/2611.00001", params={"lang": "ko"}).json()["paper"]
         assert ko["title"] == "[번역] Agent memory study"
-        assert ko["full_text"].startswith("[번역] ") and not ko["untranslated"]
+        assert ko["full_text"] == "# Agent memory study\n\nFull body." and not ko["untranslated"]  # 논문 원문은 영어
         assert app.get("/api/v1/papers", params={"q": "[번역]"}).json()["total"] == 1

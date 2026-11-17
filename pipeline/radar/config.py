@@ -62,7 +62,7 @@ class TranslateConfig:
     days: int = 90  # 매일 실행에서 살펴볼 기간 (이미 번역된 것은 해시 비교만)
     max_minutes: int = 180  # 한 번 실행의 번역 시간 상한, 0 = 무제한
     chunk_chars: int = 6000  # 긴 본문 조각 크기
-    full_text: bool = True  # 원문 본문까지 번역
+    full_text: bool = True  # 뉴스 본문까지 번역 (논문 원문은 번역하지 않음)
 
 
 @dataclass(frozen=True)

@@ -219,8 +219,11 @@ class _PaperScreenState extends State<PaperScreen> {
     final text = Theme.of(context).textTheme;
     final fullText = p.fullText;
     return [
-      SectionTitle(originalTitle(translated: !p.untranslated && !AppLang.english),
-          subtitle: fullText != null ? tr('초록 · 본문', 'Abstract · full text') : tr('초록', 'Abstract')),
+      // 논문 원문은 언어와 무관하게 영어 그대로 (FR-34 개정, BR-A35)
+      SectionTitle(originalTitle(translated: false),
+          subtitle: fullText != null
+              ? tr('초록 · 본문 (영어 원문 그대로)', 'Abstract · full text')
+              : tr('초록 (영어 원문 그대로)', 'Abstract')),
       if (p.detail != null)
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

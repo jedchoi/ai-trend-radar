@@ -179,4 +179,6 @@ def test_backfill_uploads_news_before_slow_ai_phase(config):
     kinds = [(e[0], e[2]) for e in server.events]
     first_ai = kinds.index(("daily", "fake"))
     assert ("news", "none") in kinds[:first_ai]
+    # 2026-11-18 사용자 요청 "뉴스먼저 나오게": 논문 업로드보다도 먼저
+    assert kinds[0] == ("news", "none")
     assert kinds.index(("news", "fake")) > first_ai
