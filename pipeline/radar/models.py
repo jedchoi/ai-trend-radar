@@ -60,6 +60,7 @@ class RawPaper(BaseModel):
     github_stars: int | None = None
     project_url: Url | None = None
     organization: str | None = None
+    source_raw: dict | None = None  # Hugging Face 응답 원본 (FR-26)
 
 
 class HubItem(BaseModel):
@@ -104,6 +105,8 @@ class AnalyzedPaper(BaseModel):
     project_url: str | None = None
     organization: str | None = None
     summary_source: Literal["ai", "hf", "abstract"]
+    full_text: str | None = None
+    source_raw: dict | None = None
 
 
 class DigestPayload(BaseModel):

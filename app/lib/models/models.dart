@@ -1,6 +1,7 @@
 import 'json.dart';
 import 'topic.dart';
 
+export 'news.dart';
 export 'topic.dart';
 
 class PaperDetail {
@@ -97,6 +98,9 @@ class Paper {
     this.githubStars,
     this.projectUrl,
     this.organization,
+    this.arxivUrl,
+    this.fullText,
+    this.hasFullText = false,
   });
 
   final String id;
@@ -117,6 +121,15 @@ class Paper {
   final int? githubStars;
   final String? projectUrl;
   final String? organization;
+
+  /// arXiv 초록 페이지 (FR-27).
+  final String? arxivUrl;
+
+  /// 본문 원문 (주목 논문, 논문 상세 응답에만 있음, FR-26).
+  final String? fullText;
+
+  /// 서버에 본문 원문이 있는지 (일일 요약 응답에서도 알 수 있음).
+  final bool hasFullText;
 
   bool get hasCode => githubUrl != null;
   bool get abstractBased => detail == null;
@@ -142,6 +155,9 @@ class Paper {
       githubStars: intOrNull(j, 'github_stars'),
       projectUrl: strOrNull(j, 'project_url'),
       organization: strOrNull(j, 'organization'),
+      arxivUrl: strOrNull(j, 'arxiv_url'),
+      fullText: strOrNull(j, 'full_text'),
+      hasFullText: boolean(j, 'has_full_text') || strOrNull(j, 'full_text') != null,
     );
   }
 

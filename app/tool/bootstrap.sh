@@ -30,5 +30,5 @@ if [ -f "$PLIST" ] && [ -x /usr/libexec/PlistBuddy ]; then
 fi
 
 flutter pub get
-echo "준비 완료: flutter run  (서버 주소 없이 실행하면 데모 데이터로 동작)"
+echo "준비 완료. 서버 주소를 넣어 설치: (저장소 루트에서) tool/local-app.sh 또는 tool/radar-up.sh"
 echo "로컬 서버 (http) 에 붙일 때는 debug 또는 profile 빌드: flutter run --profile"

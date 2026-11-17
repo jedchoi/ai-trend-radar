@@ -1,6 +1,7 @@
 #!/bin/bash
 # 전체 점검 (CI 와 같은 순서). 사용: tool/check.sh [--skip-app]
 #   server · pipeline: ruff, pytest (커버리지 80% 이상), 통합 테스트, 예시 응답 동기화 검사
+#   server · 통합 테스트는 PostgreSQL 이 필요: TEST_DATABASE_URL 이 없으면 tool/test-db.sh (Docker) 로 띄운다
 #   app: flutter analyze · flutter test (flutter 가 있을 때)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -8,6 +9,11 @@ SKIP_APP=0
 [ "${1:-}" = "--skip-app" ] && SKIP_APP=1
 
 step() { printf '\n== %s\n' "$*"; }
+
+if [ -z "${TEST_DATABASE_URL:-}" ]; then
+  step "테스트 DB (tool/test-db.sh)"
+  "$ROOT/tool/test-db.sh"
+fi
 
 step "server"
 cd "$ROOT/server"

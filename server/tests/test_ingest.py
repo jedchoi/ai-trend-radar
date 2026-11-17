@@ -29,9 +29,9 @@ def test_non_bearer_scheme_is_rejected(client):
     assert resp.status_code == 401
 
 
-def test_unconfigured_token_fails_closed(tmp_path):
+def test_unconfigured_token_fails_closed(clean_db):
     # BR-S01: 서버에 토큰 해시가 없으면 503 (닫힌 실패)
-    settings = Settings(db_path=str(tmp_path / "x.db"), ingest_token_sha256="")
+    settings = Settings(database_url=clean_db, ingest_token_sha256="")
     with TestClient(create_app(settings)) as c:
         resp = c.post(URL, json=make_digest("2026-11-13"), headers=AUTH)
     assert resp.status_code == 503
@@ -154,10 +154,11 @@ def test_report_requires_token(client):
 
 def test_ingest_is_logged_for_audit(client, ingest, settings):
     # NFR-S11: 업로드마다 ingest_log 1행
-    import sqlite3
+    import psycopg
 
     ingest(make_digest("2026-11-13", [make_paper("2611.00001")]))
-    rows = sqlite3.connect(settings.db_path).execute("select kind, key, count from ingest_log").fetchall()
+    with psycopg.connect(settings.database_url) as conn:
+        rows = conn.execute("select kind, key, count from ingest_log").fetchall()
     assert rows == [("daily", "2026-11-13", 1)]
 
 

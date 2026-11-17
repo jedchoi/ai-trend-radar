@@ -11,6 +11,7 @@ from radar.models import DigestPayload
 from radar.retry import with_retry
 
 RATE_LIMIT_RETRIES = 3
+NEWS_BATCH = 10  # BR-P33
 RATE_LIMIT_MAX_WAIT_S = 120
 
 
@@ -52,6 +53,20 @@ class ServerClient:
         response = self._request("POST", "/api/v1/ingest/daily", payload.model_dump_json())
         if response.status_code != 200:
             raise UploadError(f"업로드 실패: HTTP {response.status_code}", response.status_code)
+
+    def upload_news(self, items: list[dict], provider: str) -> int:
+        """BR-P33: 10건씩. 한 묶음이라도 실패하면 UploadError (앞 묶음은 이미 저장됨)."""
+        import json
+
+        sent = 0
+        for start in range(0, len(items), NEWS_BATCH):
+            batch = items[start : start + NEWS_BATCH]
+            body = json.dumps({"provider": provider, "items": batch}, ensure_ascii=False)
+            response = self._request("POST", "/api/v1/ingest/news", body)
+            if response.status_code != 200:
+                raise UploadError(f"뉴스 업로드 실패: HTTP {response.status_code}", response.status_code)
+            sent += len(batch)
+        return sent
 
     def upload_report(self, period: str, key: str, narrative: str, provider: str) -> None:
         import json

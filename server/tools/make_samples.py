@@ -1,6 +1,7 @@
-"""예시 데이터로 API 응답을 만들어 contract/samples/ 에 저장한다 (mobile-app 테스트 · 데모 입력).
+"""예시 데이터로 API 응답을 만들어 contract/samples/ 에 저장한다 (mobile-app 계약 테스트 입력).
 
-실행: python -m tools.make_samples [--out ../contract/samples] [--db 경로(데모 DB 로 남길 때)]
+실행: python -m tools.make_samples [--out ../contract/samples] [--database-url postgresql://...]
+지정한 데이터베이스 (기본: 테스트 서버의 radar_samples) 는 비운 뒤 예시 데이터로 채운다. 운영 DB 를 지정하지 않는다.
 예시 논문은 2026-11-13 Daily Papers 의 실제 제목 · id 를 쓰고, 요약 문장은 예시로 작성한 것이다.
 """
 
@@ -10,14 +11,15 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import random
-import tempfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.repository import Repository
 
 TOKEN = "sample-token"  # noqa: S105 - 예시 DB 전용
 
@@ -227,6 +229,9 @@ def build(client: TestClient) -> None:
         client.post("/api/v1/ingest/daily", json=body, headers=headers).raise_for_status()
 
     papers = [_paper(p, True) for p in FEATURED]
+    for paper in papers:
+        if paper["id"] == "2611.10439":
+            paper["full_text"] = "1 Introduction\n\n(예시 본문) " + paper["abstract"] + "\n\n2 Method\n\n(예시 본문)"
     papers += [
         _paper({"id": i, "title": t, "topic": tp, "keywords": kw, "upvotes": up, "one_liner": ol}, False)
         for i, t, tp, kw, up, ol in OTHERS
@@ -262,7 +267,53 @@ def build(client: TestClient) -> None:
         },
         headers=headers,
     ).raise_for_status()
+    client.post(
+        "/api/v1/ingest/news", json={"provider": "anthropic", "items": NEWS}, headers=headers
+    ).raise_for_status()
 
+
+# 2026-11-12 ~ 13 Hugging Face 블로그의 실제 제목 · 주소. 본문 · 요약은 예시로 작성한 것
+NEWS = [
+    {
+        "id": "nvidia/simready-assets-robot-pick-and-place",
+        "url": "https://huggingface.co/blog/nvidia/simready-assets-robot-pick-and-place",
+        "title": "Build a Robot Pick-and-Place Simulation with SimReady Assets",
+        "published_at": "2026-11-13T18:00:39Z",
+        "organization": "nvidia",
+        "content": "(예시 본문) Robot pick-and-place simulation.\n\nSimReady assets come with physics properties.",
+        "summary": "물리 속성이 들어 있는 SimReady 자산으로 로봇 집어 옮기기 시뮬레이션을 만드는 방법 (예시 요약)",
+        "key_points": ["자산에 질량 · 마찰 같은 물리 속성 포함", "시뮬레이션 데이터로 정책 학습"],
+        "keywords": ["robotics", "simulation"],
+        "topic": "robotics-physical",
+        "summary_source": "ai",
+    },
+    {
+        "id": "allenai/xybench",
+        "url": "https://huggingface.co/blog/allenai/xybench",
+        "title": "XYBench: Helping with the problem behind the question",
+        "published_at": "2026-11-13T17:02:35Z",
+        "organization": "allenai",
+        "content": "(예시 본문) XYBench measures whether assistants address the underlying problem.",
+        "summary": "질문 뒤에 숨은 실제 문제를 돕는지 평가하는 벤치마크 (예시 요약)",
+        "key_points": ["XY 문제 상황을 모은 평가 세트", "겉 질문만 답하는 모델을 가려냄"],
+        "keywords": ["benchmark", "evaluation"],
+        "topic": "evaluation-benchmark",
+        "summary_source": "ai",
+    },
+    {
+        "id": "ggml-org/llama-cpp-v1",
+        "url": "https://huggingface.co/blog/ggml-org/llama-cpp-v1",
+        "title": "llama.cpp v1",
+        "published_at": "2026-11-13T14:05:22Z",
+        "organization": "ggml-org",
+        "content": "(예시 본문) llama.cpp makes it possible to run multi-modal LLMs across a wide range of hardware.",
+        "summary": "llama.cpp 가 1.0 을 내고 배포 방식과 지원 하드웨어를 정리했다 (예시 요약)",
+        "key_points": ["양자화 · 최적화 백엔드", "C/C++ 이식성"],
+        "keywords": ["inference", "quantization"],
+        "topic": "training-optimization",
+        "summary_source": "ai",
+    },
+]
 
 SAMPLES = {
     "digest_latest.json": "/api/v1/digests/latest",
@@ -273,30 +324,38 @@ SAMPLES = {
     "trend_monthly.json": "/api/v1/trends/monthly/latest",
     "trend_series.json": "/api/v1/trends/series?weeks=8",
     "trend_periods.json": "/api/v1/trends/periods",
+    "news_list.json": "/api/v1/news?limit=20",
+    "news_detail.json": "/api/v1/news/ggml-org/llama-cpp-v1",
 }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default=str(Path(__file__).resolve().parents[2] / "contract" / "samples"))
-    parser.add_argument("--db", default=None, help="데모 DB 로 남길 경로 (없으면 임시 파일)")
+    parser.add_argument(
+        "--database-url",
+        default=os.environ.get("SAMPLES_DATABASE_URL", "postgresql://radar@127.0.0.1:55432/radar_samples"),
+        help="비우고 다시 채울 PostgreSQL 데이터베이스 (없으면 만든다)",
+    )
     args = parser.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
-        db = args.db or str(Path(tmp) / "samples.db")
-        settings = Settings(
-            db_path=db,
-            ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest(),
-            public_rate_per_min=10000,
-            ingest_rate_per_min=10000,
-        )
-        with TestClient(create_app(settings)) as client:
-            build(client)
-            for name, path in SAMPLES.items():
-                resp = client.get(path)
-                resp.raise_for_status()
-                (out / name).write_text(json.dumps(resp.json(), ensure_ascii=False, indent=2) + "\n", "utf-8")
+    repo = Repository(args.database_url)
+    repo.init()
+    repo.reset()
+    repo.close()
+    settings = Settings(
+        database_url=args.database_url,
+        ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest(),
+        public_rate_per_min=10000,
+        ingest_rate_per_min=10000,
+    )
+    with TestClient(create_app(settings)) as client:
+        build(client)
+        for name, path in SAMPLES.items():
+            resp = client.get(path)
+            resp.raise_for_status()
+            (out / name).write_text(json.dumps(resp.json(), ensure_ascii=False, indent=2) + "\n", "utf-8")
     print(f"wrote {len(SAMPLES)} samples to {out}")
 
 

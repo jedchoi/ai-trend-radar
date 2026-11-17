@@ -42,6 +42,10 @@ class CollectConfig:
     datasets: int = 5
     spaces: int = 5
     markdown_max_chars: int = 20000
+    full_text: bool = True  # 주목 논문 본문 원문 저장 (FR-26)
+    full_text_max_chars: int = 200000
+    news: bool = True  # Hugging Face 블로그 뉴스 (FR-25)
+    news_days: int = 3  # 매일 실행에서 볼 기간 (BR-P30)
 
 
 @dataclass(frozen=True)

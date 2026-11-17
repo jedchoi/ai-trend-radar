@@ -17,23 +17,38 @@ enum AskTarget {
 }
 
 class SettingsStore extends ChangeNotifier {
+  /// BR-A20: 사용자가 저장한 주소 > 빌드 시 넣은 주소 ([defaultServerUrl], `--dart-define=RADAR_SERVER_URL`).
   SettingsStore(this.prefs, {String defaultServerUrl = ''})
-      : _serverUrl = prefs.getString(_kServer) ?? defaultServerUrl,
+      : _defaultServerUrl = defaultServerUrl,
+        _serverUrl = _orDefault(prefs.getString(_kServer), defaultServerUrl),
         _interests = List.of(prefs.getStringList(_kInterests) ?? const <String>[]),
-        _askTarget = AskTarget.fromName(prefs.getString(_kAsk));
+        _askTarget = AskTarget.fromName(prefs.getString(_kAsk)),
+        _textScale = _validScale(prefs.getDouble(_kTextScale));
 
   static const _kServer = 'settings:server_url';
   static const _kInterests = 'settings:interests';
   static const _kAsk = 'settings:ask_target';
+  static const _kTextScale = 'settings:text_scale';
+
+  /// BR-A25: 글자 크기 배율.
+  static const textScales = <double>[0.9, 1.0, 1.15, 1.3];
+
+  static String _orDefault(String? saved, String fallback) => (saved == null || saved.isEmpty) ? fallback : saved;
+
+  static double _validScale(double? value) => textScales.contains(value) ? value! : 1.0;
   static const maxInterests = 20;
   static const maxInterestLength = 30;
 
   final SharedPreferences prefs;
+  final String _defaultServerUrl;
   String _serverUrl;
   List<String> _interests;
   AskTarget _askTarget;
+  double _textScale;
 
   String get serverUrl => _serverUrl;
+  String get defaultServerUrl => _defaultServerUrl;
+  double get textScale => _textScale;
   bool get configured => _serverUrl.isNotEmpty;
   List<String> get interests => List.unmodifiable(_interests);
   AskTarget get askTarget => _askTarget;
@@ -49,10 +64,16 @@ class SettingsStore extends ChangeNotifier {
       final ok = uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty;
       if (!ok || url.length > 300) return 'http:// 또는 https:// 로 시작하는 주소를 입력하세요';
     }
-    _serverUrl = url;
+    _serverUrl = _orDefault(url, _defaultServerUrl);
     await prefs.setString(_kServer, url);
     notifyListeners();
     return null;
+  }
+
+  Future<void> setTextScale(double value) async {
+    _textScale = _validScale(value);
+    await prefs.setDouble(_kTextScale, _textScale);
+    notifyListeners();
   }
 
   /// BR-A06: 1~30자, 최대 20개, 대소문자 무시 중복 금지. 추가하면 true.

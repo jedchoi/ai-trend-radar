@@ -1,22 +1,25 @@
 """통합 테스트 (Build and Test): PC 파이프라인 → 실제 HTTP → backend 서버 → 앱이 읽는 API.
 
-실행: PYTHONPATH=server:pipeline pytest integration -q
+실행: PYTHONPATH=server:pipeline pytest integration -q  (PostgreSQL: TEST_DATABASE_URL, 기본 tool/test-db.sh 의 주소)
 Hugging Face 는 가짜 응답 (MockTransport), 서버는 uvicorn 으로 실제 포트에서 띄운다.
 """
 
 import datetime as dt
 import hashlib
 import json
+import os
 import socket
 import threading
 import time
 
 import httpx
+import psycopg
 import pytest
 import uvicorn
 
 from app.config import Settings
 from app.main import create_app
+from app.repository import TABLES, Repository
 from radar.analyze import Analyzer
 from radar.config import AIConfig, CollectConfig, Config, PathsConfig, SelectConfig, ServerConfig
 from radar.hf_client import HFClient
@@ -24,6 +27,7 @@ from radar.publish import ServerClient
 from radar.runner import EXIT_OK, Runner
 
 TOKEN = "integration-token-0123456789abcdef"
+DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://radar@127.0.0.1:55432/radar_test")
 
 
 def free_port() -> int:
@@ -34,8 +38,13 @@ def free_port() -> int:
 
 @pytest.fixture
 def server(tmp_path):
+    repo = Repository(DATABASE_URL)
+    repo.init(wait_s=3)
+    repo.close()
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        conn.execute(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY")
     port = free_port()
-    settings = Settings(db_path=str(tmp_path / "it.db"), ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest())
+    settings = Settings(database_url=DATABASE_URL, ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest())
     config = uvicorn.Config(create_app(settings), host="127.0.0.1", port=port, log_level="warning")
     srv = uvicorn.Server(config)
     thread = threading.Thread(target=srv.run, daemon=True)
@@ -55,9 +64,13 @@ def hf_item(pid, title, upvotes, keywords, github=None):
                       "ai_summary": f"Summary of {title}.", "ai_keywords": keywords, "githubRepo": github}}
 
 
-def fake_hf(day_items: dict[str, list]):
+def fake_hf(day_items: dict[str, list], pages: dict[str, str] | None = None):
+    pages = pages or {}
+
     def handler(request: httpx.Request):
         params = dict(request.url.params)
+        if request.url.path in pages:
+            return httpx.Response(200, text=pages[request.url.path])
         if request.url.path == "/api/daily_papers":
             items = day_items.get(params["date"], [])
             p, limit = int(params.get("p", 0)), int(params["limit"])
@@ -90,6 +103,7 @@ def test_pipeline_uploads_and_app_api_reads(server, tmp_path, monkeypatch):
         server=ServerClient(httpx.Client(base_url=server), token=TOKEN, sleep=lambda s: None),
         analyzer=Analyzer(provider=None, max_ai_papers=60),
         now=lambda: dt.datetime(2026, 11, 17, 3, 0, tzinfo=dt.UTC),
+        sleep=lambda s: None,
     )
     assert runner.run_daily() == EXIT_OK
 
@@ -167,3 +181,58 @@ def test_backfill_fills_real_server(server, tmp_path, monkeypatch):
         assert week["paper_count"] == 28 and week["narrative"]
         latest = app.get("/api/v1/digests/latest").json()
         assert latest["hub"] and not app.get("/api/v1/digests/2026-11-10").json()["hub"]
+
+
+FEED = """<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>
+<item><title>llama.cpp v1</title><pubDate>Fri, 13 Nov 2026 14:05:22 GMT</pubDate>
+<link>https://huggingface.co/blog/ggml-org/llama-cpp-v1</link></item>
+<item><title>Old</title><pubDate>Fri, 26 Sep 2025 00:00:00 GMT</pubDate><link>https://huggingface.co/blog/old</link></item>
+</channel></rss>"""
+ARTICLE = (
+    '<html><body><nav><p>menu</p></nav><div class="blog-content"><h1>llama.cpp v1</h1>'
+    "<p>llama.cpp makes it possible to run multi-modal LLMs across a wide range of hardware.</p>"
+    "<h2>Releases</h2><p>Signed binaries.</p></div></body></html>"
+)
+
+
+def test_news_and_original_text_end_to_end(server, tmp_path, monkeypatch):
+    # FR-25 ~ FR-27: 뉴스 원문 · 논문 본문 원문 · HF 원본이 실제 서버 (Postgres) 에 저장되고 앱 API 로 보인다
+    monkeypatch.setenv("RADAR_IT_TOKEN", TOKEN)
+    items = [hf_item("2611.00001", "Agent memory study", 50, ["Agent"])]
+    pages = {
+        "/blog/feed.xml": FEED,
+        "/blog/ggml-org/llama-cpp-v1": ARTICLE,
+        "/papers/2611.00001.md": "# Agent memory study\n\nFull body.",
+    }
+    config = Config(
+        server=ServerConfig(url=server, token_env="RADAR_IT_TOKEN"),
+        ai=AIConfig(provider="none"),
+        collect=CollectConfig(models=1, datasets=1, spaces=1, news_days=7),
+        select=SelectConfig(max_featured=1),
+        paths=PathsConfig(data_dir=str(tmp_path / "n")),
+    )
+    runner = Runner(
+        config=config,
+        hf=fake_hf({"2026-11-16": items}, pages),
+        server=ServerClient(httpx.Client(base_url=server), token=TOKEN, sleep=lambda s: None),
+        analyzer=Analyzer(provider=None, max_ai_papers=60),
+        now=lambda: dt.datetime(2026, 11, 17, 3, 0, tzinfo=dt.UTC),
+        sleep=lambda s: None,
+    )
+    assert runner.run_daily() == EXIT_OK
+    with httpx.Client(base_url=server) as app:
+        news = app.get("/api/v1/news").json()
+        assert news["total"] == 1 and news["items"][0]["id"] == "ggml-org/llama-cpp-v1"
+        detail = app.get("/api/v1/news/ggml-org/llama-cpp-v1").json()
+        assert detail["content"].startswith("## llama.cpp v1") and "menu" not in detail["content"]
+        assert detail["summary"].startswith("llama.cpp makes it possible")
+        paper = app.get("/api/v1/papers/2611.00001").json()["paper"]
+        assert paper["full_text"] == "# Agent memory study\n\nFull body." and paper["has_full_text"]
+        for name in ("news_list.json", "news_detail.json"):
+            sample = json.loads((__import__("pathlib").Path(__file__).parents[1] / "contract/samples" / name)
+                                .read_text("utf-8"))
+            got = news if name == "news_list.json" else detail
+            assert set(sample) == set(got)
+    with psycopg.connect(DATABASE_URL) as conn:
+        assert conn.execute("select source_raw->'paper'->>'id' from papers").fetchone()[0] == "2611.00001"
+        assert conn.execute("select source_raw->>'title' from news").fetchone()[0] == "llama.cpp v1"

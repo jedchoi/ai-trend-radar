@@ -1,0 +1,22 @@
+{
+  "id": "ggml-org/llama-cpp-v1",
+  "title": "llama.cpp v1",
+  "url": "https://huggingface.co/blog/ggml-org/llama-cpp-v1",
+  "published_at": "2026-11-13T14:05:22Z",
+  "organization": "ggml-org",
+  "image_url": null,
+  "summary": "llama.cpp 가 1.0 을 내고 배포 방식과 지원 하드웨어를 정리했다 (예시 요약)",
+  "topic": "training-optimization",
+  "keywords": [
+    "inference",
+    "quantization"
+  ],
+  "authors": [],
+  "content": "(예시 본문) llama.cpp makes it possible to run multi-modal LLMs across a wide range of hardware.",
+  "key_points": [
+    "양자화 · 최적화 백엔드",
+    "C/C++ 이식성"
+  ],
+  "summary_source": "ai",
+  "provider": "anthropic"
+}

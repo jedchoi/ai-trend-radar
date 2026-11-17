@@ -4,16 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/cache_store.dart';
 import 'data/library_store.dart';
+import 'data/read_store.dart';
 import 'data/repository.dart';
 import 'data/settings_store.dart';
 
 /// 앱 전체가 쓰는 서비스 묶음 (의존성 주입, NFR-A06).
 class AppServices {
-  AppServices({required this.settings, required this.library, required this.repository});
+  AppServices({required this.settings, required this.library, required this.repository, required this.reads});
 
   final SettingsStore settings;
   final LibraryStore library;
   final RadarRepository repository;
+  final ReadStore reads;
 
   /// [serverUrl] 기본값은 빌드 시 `--dart-define=RADAR_SERVER_URL=https://...` 로 줄 수 있다.
   static Future<AppServices> create({http.Client? client}) async {
@@ -23,6 +25,7 @@ class AppServices {
     return AppServices(
       settings: settings,
       library: LibraryStore(prefs),
+      reads: ReadStore(prefs),
       repository: RadarRepository(
         settings: settings,
         cache: CacheStore(prefs),

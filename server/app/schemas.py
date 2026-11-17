@@ -15,7 +15,10 @@ PAPER_ID_PATTERN = r"^[A-Za-z0-9._-]{1,40}$"
 HUB_ID_PATTERN = r"^[A-Za-z0-9._-]{1,96}/[A-Za-z0-9._-]{1,96}$"
 WEEK_KEY_PATTERN = r"^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$"
 MONTH_KEY_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+NEWS_ID_PATTERN = r"^[a-z0-9][a-z0-9._-]{0,99}(/[a-z0-9][a-z0-9._-]{0,149})?$"
 MIN_DATE = dt.date(2020, 1, 1)
+FULL_TEXT_MAX = 200_000
+RAW_MAX_BYTES = 100_000
 
 
 class Topic(StrEnum):
@@ -43,6 +46,16 @@ Text = Annotated[str, StringConstraints(strip_whitespace=True)]
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Url = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500, pattern=r"^https?://\S+$")]
 Keyword = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=60)]
+FullText = Annotated[str, StringConstraints(max_length=FULL_TEXT_MAX)]
+
+
+def _check_raw(value: dict | None) -> dict | None:
+    """BR-S31: 원본 JSON 은 100 KB 까지."""
+    import json
+
+    if value is not None and len(json.dumps(value, ensure_ascii=False).encode()) > RAW_MAX_BYTES:
+        raise ValueError("source_raw too large")
+    return value
 
 
 def _check_date(value: dt.date) -> dt.date:
@@ -86,11 +99,18 @@ class PaperIn(Strict):
     project_url: Url | None = None
     organization: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
     summary_source: SummarySource = SummarySource.HF
+    full_text: FullText | None = None
+    source_raw: dict | None = None
 
     @field_validator("keywords")
     @classmethod
     def _dedupe_keywords(cls, value: list[str]) -> list[str]:
         return list(dict.fromkeys(value))
+
+    @field_validator("source_raw")
+    @classmethod
+    def _raw_size(cls, value: dict | None) -> dict | None:
+        return _check_raw(value)
 
 
 class HubItemIn(Strict):
@@ -149,6 +169,47 @@ class ReportIngest(Strict):
         return value
 
 
+class NewsIn(Strict):
+    id: Annotated[str, StringConstraints(pattern=NEWS_ID_PATTERN)]
+    url: Url
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+    published_at: dt.datetime
+    organization: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    authors: list[ShortText] = Field(default_factory=list, max_length=30)
+    image_url: Url | None = None
+    content: FullText = ""
+    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)]
+    key_points: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]] = Field(
+        default_factory=list, max_length=6
+    )
+    keywords: list[Keyword] = Field(default_factory=list, max_length=15)
+    topic: Topic = Topic.OTHER
+    summary_source: SummarySource = SummarySource.AI
+    source_raw: dict | None = None
+
+    @field_validator("keywords")
+    @classmethod
+    def _dedupe_keywords(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(value))
+
+    @field_validator("source_raw")
+    @classmethod
+    def _raw_size(cls, value: dict | None) -> dict | None:
+        return _check_raw(value)
+
+
+class NewsIngest(Strict):
+    provider: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,30}$")] = "none"
+    items: list[NewsIn] = Field(min_length=1, max_length=20)
+
+    @field_validator("items")
+    @classmethod
+    def _unique(cls, value: list[NewsIn]) -> list[NewsIn]:
+        if len({n.id for n in value}) != len(value):
+            raise ValueError("duplicate news id")
+        return value
+
+
 # ---------- 응답 ----------
 
 
@@ -156,6 +217,9 @@ class Paper(PaperIn):
     model_config = ConfigDict(extra="ignore")
     date: dt.date
     hf_url: str
+    arxiv_url: str
+    has_full_text: bool = False
+    source_raw: dict | None = Field(default=None, exclude=True)  # BR-S31: 응답에 넣지 않는다
 
 
 class PaperBrief(BaseModel):
@@ -271,3 +335,32 @@ class IngestResult(BaseModel):
 class ReportResult(BaseModel):
     period: Period
     key: str
+
+
+class NewsBrief(BaseModel):
+    id: str
+    title: str
+    url: str
+    published_at: dt.datetime
+    organization: str | None = None
+    image_url: str | None = None
+    summary: str
+    topic: Topic
+    keywords: list[str]
+
+
+class News(NewsBrief):
+    authors: list[str]
+    content: str
+    key_points: list[str]
+    summary_source: SummarySource
+    provider: str
+
+
+class NewsList(BaseModel):
+    items: list[NewsBrief]
+    total: int
+
+
+class NewsResult(BaseModel):
+    news: int

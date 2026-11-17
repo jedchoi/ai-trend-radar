@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 매일 06:00 (PC 현지 시각) 갱신 (FR-28, BR-P35). tool/radar-up.sh 가 __SCRIPT__ · __LOG__ 를 채워 설치한다 -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jedchoi.ai-trend-radar</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__SCRIPT__</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>6</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__LOG__</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG__</string>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

@@ -35,7 +35,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.repo.init()
-        yield
+        try:
+            yield
+        finally:
+            app.state.repo.close()
 
     app = FastAPI(
         title="AI Trend Radar API",
@@ -46,7 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/openapi.json" if settings.enable_docs else None,
     )
     app.state.settings = settings
-    app.state.repo = Repository(settings.db_path)
+    app.state.repo = Repository(settings.database_url, pool_size=settings.db_pool_size)
     app.state.trends = TrendService(app.state.repo)
 
     @app.exception_handler(StarletteHTTPException)

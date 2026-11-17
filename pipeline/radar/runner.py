@@ -8,12 +8,14 @@ import os
 import time
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 from radar.analyze import Analyzer
 from radar.config import Config, check_server_config
 from radar.hf_client import HFClient
 from radar.models import DigestPayload, HubItem, RawPaper, Topic
+from radar.news import FEED_PATH, Article, analyze_news, extract_article, parse_feed, to_json
 from radar.providers import check_ai_config
 from radar.publish import ServerClient
 from radar.select import select_featured
@@ -23,6 +25,8 @@ KST = ZoneInfo("Asia/Seoul")
 BACKFILL_DAYS = 7
 BACKFILL_MAX_DAYS = 120
 HF_PAUSE_S = 0.5
+ORIGINAL_PAUSE_S = 3.0  # NFR-10: 원문 (논문 본문 · 블로그 글) 요청 사이
+NEWS_MAX_PER_RUN = 300
 EXIT_OK, EXIT_FAILED, EXIT_CONFIG = 0, 2, 3
 
 
@@ -140,7 +144,10 @@ class Runner:
         try:
             raws, hub = self.collect_day(day)
             stage = "analyze"
-            return self.analyze_raw(day, raws, hub, self.analyzer)
+            payload, fallbacks = self.analyze_raw(day, raws, hub, self.analyzer)
+            stage = "fulltext"
+            self.attach_full_text(payload)
+            return payload, fallbacks
         except Exception as exc:  # noqa: BLE001 - 단계 이름과 함께 기록하고 중단
             raise StepFailed(stage, exc) from exc
 
@@ -195,6 +202,111 @@ class Runner:
             Path(dry_run_out).write_text(json.dumps(dry_payloads, ensure_ascii=False, indent=2), "utf-8")
         if not days:
             print("처리할 날짜 없음 (이미 최신)")
+        if dry_run_out is None:
+            self.run_news(self.config.collect.news_days)  # BR-P34: 뉴스 실패는 일일 결과에 영향 없음
+        return EXIT_OK
+
+    # ---------- 원문 (FR-26, BR-P31) ----------
+
+    def full_text(self, paper_id: str) -> str | None:
+        """주목 논문 본문 원문. data/fulltext/{id}.md 에 보관해 한 번만 받는다 (없던 것도 기록)."""
+        folder = self.data / "fulltext"
+        path, missing = folder / f"{paper_id}.md", folder / f"{paper_id}.none"
+        if path.exists():
+            return path.read_text("utf-8") or None
+        if missing.exists():
+            return None
+        text = self.hf.paper_markdown(paper_id, self.config.collect.full_text_max_chars)
+        self.sleep(ORIGINAL_PAUSE_S)
+        folder.mkdir(parents=True, exist_ok=True)
+        if text and text.strip():
+            path.write_text(text, "utf-8")
+            return text
+        missing.write_text("", "utf-8")
+        return None
+
+    def attach_full_text(self, payload: DigestPayload) -> None:
+        if not self.config.collect.full_text:
+            return
+        for paper in payload.papers:
+            if paper.featured:
+                try:
+                    paper.full_text = self.full_text(paper.id)
+                except Exception:  # noqa: BLE001 - NFR-10: 원문 실패는 원문만 비운다
+                    paper.full_text = None
+
+    # ---------- 뉴스 (FR-25, BR-P30 ~ BR-P34) ----------
+
+    def _news_seen(self) -> dict[str, str]:
+        try:
+            return json.loads((self.data / "news_seen.json").read_text())
+        except (FileNotFoundError, ValueError):
+            return {}
+
+    def _mark_news_seen(self, items: list) -> None:
+        seen = self._news_seen()
+        seen.update({i.id: self.analyzer.provider_name for i in items})
+        self.data.mkdir(parents=True, exist_ok=True)
+        (self.data / "news_seen.json").write_text(json.dumps(dict(sorted(seen.items()))))
+
+    def run_news(self, days: int) -> int:
+        """기간 안의 새 블로그 글 → 본문 → 분석 → 10건씩 업로드. 업로드된 것만 seen 에 기록."""
+        if not self.config.collect.news:
+            return EXIT_OK
+        started = time.monotonic()
+        provider = self.analyzer.provider_name
+        try:
+            feed = self.hf.text(FEED_PATH)
+            if feed is None:
+                raise RuntimeError("RSS 를 받지 못함")
+            items = parse_feed(feed)
+        except Exception as exc:  # noqa: BLE001
+            self._record(stage="news", status="failed", provider=provider, news=0, error=str(exc)[:300])
+            print(f"뉴스 수집 실패: {exc}")
+            return EXIT_FAILED
+        cutoff = self.now() - dt.timedelta(days=days)
+        seen = self._news_seen()
+        # 처음 보는 글, 또는 AI 없이 올렸던 글을 AI 로 다시 (같은 제공자로는 한 번만)
+        todo = [
+            i
+            for i in items
+            if i.published_at >= cutoff and (i.id not in seen or (provider != "none" and seen[i.id] != provider))
+        ][:NEWS_MAX_PER_RUN]
+        sent, fallbacks, pending = 0, 0, []
+        try:
+            for n, item in enumerate(todo, start=1):
+                html = self.hf.text(urlparse(item.url).path)
+                self.sleep(ORIGINAL_PAUSE_S)
+                article = extract_article(html) if html else Article()
+                payload, fell_back = analyze_news(self.analyzer, item, article)
+                fallbacks += fell_back
+                pending.append((item, payload))
+                print(f"[뉴스 {n}/{len(todo)}] {item.published_at:%Y-%m-%d} {item.title[:60]}")
+                if len(pending) == 10 or n == len(todo):
+                    self.server.upload_news(to_json([p for _, p in pending]), provider)
+                    self._mark_news_seen([i for i, _ in pending])
+                    sent += len(pending)
+                    pending = []
+        except Exception as exc:  # noqa: BLE001 - BR-P33: 올리지 못한 글은 다음 실행에서 다시
+            self._record(
+                stage="news",
+                status="failed",
+                provider=provider,
+                news=sent,
+                ai_fallbacks=fallbacks,
+                error=str(exc)[:300],
+            )
+            print(f"뉴스 업로드 실패: {exc}")
+            return EXIT_FAILED
+        self._record(
+            stage="news",
+            status="ok",
+            provider=provider,
+            news=sent,
+            ai_fallbacks=fallbacks,
+            duration_s=round(time.monotonic() - started, 2),
+        )
+        print(f"뉴스 {sent}건 올림 (기간 {days}일, AI 대체 {fallbacks}건)")
         return EXIT_OK
 
     # ---------- 리포트 ----------
@@ -295,6 +407,7 @@ class Runner:
                 print(f"[{i}/{len(dates)}] {day} 이미 AI 분석됨 ({len(raws)}편)")
                 continue
             payload, _ = self.analyze_raw(day, raws, hub, quick)
+            self.attach_full_text(payload)
             try:
                 self.server.upload_digest(payload)
             except Exception as exc:  # noqa: BLE001 - 업로드 실패 (토큰 · 서버) 는 전체 중단
@@ -334,6 +447,7 @@ class Runner:
                     )
                     failed += 1
                     break  # 리포트는 규칙 문장으로 계속 만든다
+                self.attach_full_text(payload)
                 try:
                     self.server.upload_digest(payload)
                 except Exception as exc:  # noqa: BLE001
@@ -353,6 +467,10 @@ class Runner:
                     f"[AI {i}/{len(todo)}] {day} 분석 ({len(payload.papers)}편, 대체 {fallbacks}건, "
                     f"{time.monotonic() - started:.0f}초)"
                 )
+
+        # 뉴스: 같은 기간의 Hugging Face 블로그 글 (BR-P34: 실패는 기록만, 논문 결과에 영향 없음)
+        if self.config.collect.news:
+            self.run_news((self.today_kst() - dates[0]).days + 1)
 
         # 3단계
         if reports and self._backfill_reports(dates) != EXIT_OK:

@@ -6,15 +6,20 @@ import 'common.dart';
 
 /// 주목 논문 카드 (BR-A02).
 class PaperCard extends StatelessWidget {
-  const PaperCard({super.key, required this.paper, required this.onTap, this.interests = const []});
+  const PaperCard({super.key, required this.paper, required this.onTap, this.interests = const [], this.read = false});
 
   final Paper paper;
   final VoidCallback onTap;
   final List<String> interests;
+  final bool read;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    return Opacity(opacity: read ? 0.55 : 1, child: _card(text));
+  }
+
+  Widget _card(TextTheme text) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       clipBehavior: Clip.antiAlias,
@@ -26,7 +31,10 @@ class PaperCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TopicChip(paper.topic),
+              Row(children: [
+                TopicChip(paper.topic),
+                if (read) ...[const SizedBox(width: 8), Text('읽음', style: text.labelSmall)],
+              ]),
               const SizedBox(height: 8),
               Text(paper.title,
                   maxLines: 3,
@@ -57,6 +65,7 @@ class PaperRow extends StatelessWidget {
     this.date,
     this.interests = const [],
     this.featured = false,
+    this.read = false,
   });
 
   final String title;
@@ -67,9 +76,12 @@ class PaperRow extends StatelessWidget {
   final String? date;
   final List<String> interests;
   final bool featured;
+  final bool read;
   final VoidCallback onTap;
 
-  factory PaperRow.paper(Paper p, {required VoidCallback onTap, List<String> interests = const []}) => PaperRow(
+  factory PaperRow.paper(Paper p,
+          {required VoidCallback onTap, List<String> interests = const [], bool read = false}) =>
+      PaperRow(
         title: p.title,
         oneLiner: p.oneLiner,
         topic: p.topic,
@@ -77,10 +89,13 @@ class PaperRow extends StatelessWidget {
         hasCode: p.hasCode,
         interests: interests,
         featured: p.featured,
+        read: read,
         onTap: onTap,
       );
 
-  factory PaperRow.brief(PaperBrief p, {required VoidCallback onTap, List<String> interests = const []}) => PaperRow(
+  factory PaperRow.brief(PaperBrief p,
+          {required VoidCallback onTap, List<String> interests = const [], bool read = false}) =>
+      PaperRow(
         title: p.title,
         oneLiner: p.oneLiner,
         topic: p.topic,
@@ -89,6 +104,7 @@ class PaperRow extends StatelessWidget {
         date: p.date,
         interests: interests,
         featured: p.featured,
+        read: read,
         onTap: onTap,
       );
 
@@ -96,6 +112,10 @@ class PaperRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final muted = text.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+    return Opacity(opacity: read ? 0.55 : 1, child: _row(text, muted));
+  }
+
+  Widget _row(TextTheme text, TextStyle? muted) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -128,6 +148,7 @@ class PaperRow extends StatelessWidget {
                       TopicChip(topic, dense: true),
                       if (date != null) Text(shortDay(date!), style: muted),
                       if (featured) Text('주목', style: muted?.copyWith(fontWeight: FontWeight.w700)),
+                      if (read) Text('읽음', style: muted),
                       MetaLine(upvotes: upvotes, hasCode: hasCode, interests: interests),
                     ],
                   ),

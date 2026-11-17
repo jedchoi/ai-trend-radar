@@ -1,10 +1,16 @@
 import hashlib
+import os
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.repository import TABLES, Repository
+
+# 테스트 전용 데이터베이스. 없으면 만든다 (tool/test-db.sh 가 도커로 띄우는 기본 주소)
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://radar@127.0.0.1:55432/radar_test")
 
 TOKEN = "test-token-0123456789abcdef0123456789abcdef"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -43,10 +49,29 @@ def make_digest(date: str, papers=None, hub=None, headline=None, provider="none"
     }
 
 
+@pytest.fixture(scope="session")
+def database_url() -> str:
+    repo = Repository(TEST_DATABASE_URL)
+    try:
+        repo.init(wait_s=3)
+    except psycopg.OperationalError as exc:
+        pytest.exit(f"PostgreSQL 접속 실패 ({exc}). tool/test-db.sh 를 실행하거나 TEST_DATABASE_URL 을 지정하세요.")
+    repo.close()
+    return TEST_DATABASE_URL
+
+
 @pytest.fixture
-def settings(tmp_path):
+def clean_db(database_url) -> str:
+    """테스트마다 빈 데이터베이스."""
+    with psycopg.connect(database_url, autocommit=True) as conn:
+        conn.execute(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY")
+    return database_url
+
+
+@pytest.fixture
+def settings(clean_db):
     return Settings(
-        db_path=str(tmp_path / "radar.db"),
+        database_url=clean_db,
         ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest(),
         enable_docs=False,
         public_rate_per_min=1000,

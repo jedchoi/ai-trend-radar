@@ -12,17 +12,19 @@ def _int(name: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Settings:
-    db_path: str = "/data/radar.db"
+    database_url: str = "postgresql://radar@localhost:5432/radar"
+    db_pool_size: int = 5
     ingest_token_sha256: str = ""
     enable_docs: bool = False
     public_rate_per_min: int = 120
     ingest_rate_per_min: int = 30
-    max_body_bytes: int = 2 * 1024 * 1024
+    max_body_bytes: int = 10 * 1024 * 1024  # BR-S34: 원문이 든 업로드
 
     @classmethod
     def from_env(cls) -> Settings:
         return cls(
-            db_path=os.environ.get("DB_PATH", cls.db_path),
+            database_url=os.environ.get("DATABASE_URL", cls.database_url),
+            db_pool_size=_int("DB_POOL_SIZE", cls.db_pool_size),
             ingest_token_sha256=os.environ.get("INGEST_TOKEN_SHA256", "").strip().lower(),
             enable_docs=os.environ.get("ENABLE_DOCS", "0") == "1",
             public_rate_per_min=_int("PUBLIC_RATE_PER_MIN", cls.public_rate_per_min),

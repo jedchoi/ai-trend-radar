@@ -9,7 +9,7 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 실행 | `launchd` 사용자 에이전트 `com.jedchoi.ai-trend-radar` 가 매일 08:00 (Mac 시간대 = KST) 에 `pipeline/deploy/run-daily.sh` 실행. 잠자기 중 놓친 실행은 깨어날 때 1회 실행 (launchd 동작), 꺼져 있던 날은 BR-P14 로 채움 |
+| 실행 | `launchd` 사용자 에이전트 `com.jedchoi.ai-trend-radar` 가 매일 06:00 (Mac 시간대 = KST, 2주기 FR-28) 에 `tool/radar-daily.sh` (로컬 Docker 서버) 또는 `pipeline/deploy/run-daily.sh` (원격 서버) 실행. 잠자기 중 놓친 실행은 깨어날 때 1회 실행 (launchd 동작), 꺼져 있던 날은 BR-P14 로 채움 |
 | 비밀 | macOS 키체인 (`security add-generic-password -s ai-trend-radar -a ingest-token`, AI 키는 `-a <ENV 이름>`) → `run-daily.sh` 가 읽어 환경 변수로 넘김. plist · 설정 파일에는 비밀 없음 |
 | 설정 | `~/.config/ai-trend-radar/config.toml` |
 | 데이터 | `~/.local/share/ai-trend-radar/` (state.json, runs.jsonl, raw/) |

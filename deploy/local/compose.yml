@@ -1,0 +1,55 @@
+# Docker Desktop 로컬 서버 (FR-23, FR-24). 직접 쓰지 말고 tool/radar-up.sh 로 실행한다.
+# - db 프로필: Postgres 를 같이 띄운다 (기본). 이미 있는 Postgres 를 쓰면 프로필 없이 api 만
+# - 값은 .local/.env (tool/radar-up.sh 가 만든다, 저장소 밖 · 권한 600)
+name: ai-trend-radar
+
+services:
+  db:
+    profiles: [db]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: radar
+      POSTGRES_DB: radar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 가 없습니다 (.local/.env)}
+    volumes:
+      - radar-pg:/var/lib/postgresql/data
+    ports:
+      # PC 의 DB 도구 (TablePlus, psql) 에서만 접속. 휴대폰 · 다른 기기에는 열지 않는다
+      - "127.0.0.1:${RADAR_DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radar -d radar"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ../../server
+    image: ai-trend-radar-api:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL 이 없습니다 (.local/.env)}
+      INGEST_TOKEN_SHA256: ${INGEST_TOKEN_SHA256:?INGEST_TOKEN_SHA256 이 없습니다 (.local/.env)}
+      ENABLE_DOCS: "1"
+      # 같은 PC 의 백필은 업로드가 몰리므로 업로드 한도를 넉넉히 (공개 조회 한도는 그대로)
+      INGEST_RATE_PER_MIN: "600"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp
+    ports:
+      # 같은 Wi-Fi 의 휴대폰이 http://<PC IP>:8000 으로 접속
+      - "0.0.0.0:${RADAR_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health').status==200 else 1)"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+volumes:
+  radar-pg:

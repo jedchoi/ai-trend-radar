@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import time
 from collections.abc import Callable
 from typing import Any
@@ -16,6 +17,7 @@ from radar.retry import with_retry
 PAGE_SIZE = 10
 MAX_PAGES = 20
 KIND_PATH = {"model": "/api/models", "dataset": "/api/datasets", "space": "/api/spaces"}
+RAW_MAX_BYTES = 100_000
 
 
 class HFError(RuntimeError):
@@ -35,6 +37,15 @@ def _org(value: Any) -> str | None:
     if isinstance(value, dict):
         return value.get("fullname") or value.get("name")
     return value if isinstance(value, str) else None
+
+
+def _raw_copy(item: dict) -> dict | None:
+    """BR-S31: 원본은 100 KB 까지만 보관."""
+    try:
+        text = json.dumps(item, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return None
+    return json.loads(text) if len(text.encode()) <= RAW_MAX_BYTES else None
 
 
 def parse_daily_item(item: Any) -> RawPaper | None:
@@ -59,6 +70,7 @@ def parse_daily_item(item: Any) -> RawPaper | None:
             github_stars=paper.get("githubStars"),
             project_url=paper.get("projectPage") or None,
             organization=_org(paper.get("organization") or item.get("organization")),
+            source_raw=_raw_copy(item),
         )
     except (ValidationError, TypeError, ValueError):
         return None
@@ -122,6 +134,14 @@ class HFClient:
             except (ValidationError, TypeError, ValueError):
                 continue
         return result[:limit]
+
+    def text(self, path: str) -> str | None:
+        """같은 호스트의 텍스트 (블로그 RSS · 글 HTML). 200 이 아니거나 연결 실패면 None."""
+        try:
+            response = self._get(path)
+        except HFError:
+            return None
+        return response.text if response.status_code == 200 else None
 
     def paper_markdown(self, paper_id: str, max_chars: int = 20000) -> str | None:
         """주목 논문 본문 (없으면 None). 실패해도 분석은 초록으로 계속한다."""

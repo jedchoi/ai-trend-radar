@@ -7,7 +7,7 @@
 | C-S1 | Public API Router | `server/app/routes_public.py` | 읽기 전용 조회 · 검색 · 트렌드 API | US-01 ~ US-03, US-05 ~ US-07, US-09 ~ US-12 |
 | C-S2 | Ingest API Router | `server/app/routes_ingest.py` | 일일 요약 · 리포트 업로드 | US-19, US-20 |
 | C-S3 | Ingest Auth | `server/app/security.py` | 업로드 토큰 검증 (해시 비교, 미설정 시 거부) | US-19 |
-| C-S4 | Repository | `server/app/repository.py` | SQLite 저장 · 조회, FTS5 검색, 날짜 단위 트랜잭션 | US-01 ~ US-03, US-07, US-12, US-19 |
+| C-S4 | Repository | `server/app/repository.py` | PostgreSQL 저장 · 조회 (2주기), 부분 일치 검색 (pg_trgm), 날짜 단위 트랜잭션, 뉴스 | US-01 ~ US-03, US-07, US-12, US-19 |
 | C-S5 | Trend Service | `server/app/trends.py` | 주 · 월 통계, 급상승 키워드, Hub 신규 · 체류, 주제 시계열 | US-09 ~ US-11 |
 | C-S6 | API Schemas | `server/app/schemas.py` | 요청 · 응답 형식 (API 계약), 입력 검증 | 전체 |
 | C-S7 | Middleware | `server/app/middleware.py` | 요청 속도 제한, 보안 헤더, 접근 로그, 전역 오류 처리 | US-19, NFR-04 |

@@ -136,7 +136,7 @@ def test_prompts_are_plain_files():
     # NFR-P01: 프롬프트는 제공자와 무관한 파일, 첫 줄이 작업 이름
     prompts = Path(__file__).resolve().parents[1] / "radar" / "prompts"
     names = {p.stem: p.read_text("utf-8").splitlines()[0] for p in prompts.glob("*.md")}
-    assert names == {"brief": "BRIEF", "detail": "DETAIL", "headline": "HEADLINE", "report": "REPORT"}
+    assert names == {"brief": "BRIEF", "detail": "DETAIL", "headline": "HEADLINE", "report": "REPORT", "news": "NEWS"}
     assert json.dumps(names)
 
 

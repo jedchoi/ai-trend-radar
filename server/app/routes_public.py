@@ -9,11 +9,14 @@ from fastapi import APIRouter, HTTPException, Path, Query, Request
 
 from app.schemas import (
     MONTH_KEY_PATTERN,
+    NEWS_ID_PATTERN,
     PAPER_ID_PATTERN,
     WEEK_KEY_PATTERN,
     Digest,
     DigestList,
     Health,
+    News,
+    NewsList,
     PaperWithRelated,
     Periods,
     SearchResult,
@@ -81,6 +84,23 @@ def search_papers(
         q, topic.value if topic else None, since, until, featured, limit, offset
     )
     return SearchResult(items=items, total=total)
+
+
+@router.get("/news", response_model=NewsList)
+def list_news(
+    request: Request,
+    q: Annotated[str | None, Query(max_length=300)] = None,
+    topic: Topic | None = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+) -> NewsList:
+    items, total = _repo(request).list_news(q, topic.value if topic else None, limit, offset)
+    return NewsList(items=items, total=total)
+
+
+@router.get("/news/{news_id:path}", response_model=News)
+def get_news(request: Request, news_id: Annotated[str, Path(pattern=NEWS_ID_PATTERN)]) -> News:
+    return _found(_repo(request).get_news(news_id))
 
 
 @router.get("/trends/periods", response_model=Periods)

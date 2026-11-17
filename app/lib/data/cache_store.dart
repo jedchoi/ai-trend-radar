@@ -9,6 +9,9 @@ class CacheStore {
   CacheStore(this.prefs);
 
   static const _prefix = 'cache:';
+
+  /// 원문이 든 큰 응답은 저장하지 않는다 (기기 저장소 보호).
+  static const maxChars = 300000;
   final SharedPreferences prefs;
 
   Json? read(String path) {
@@ -22,5 +25,9 @@ class CacheStore {
     }
   }
 
-  Future<void> write(String path, Json json) => prefs.setString('$_prefix$path', jsonEncode(json));
+  Future<void> write(String path, Json json) async {
+    final text = jsonEncode(json);
+    if (text.length > maxChars) return;
+    await prefs.setString('$_prefix$path', text);
+  }
 }

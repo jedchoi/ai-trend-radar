@@ -23,7 +23,7 @@ else
   echo "  기존 설정 유지: $CONFIG_DIR/config.toml"
 fi
 
-echo "3/4 예약 실행 등록 (매일 08:00)"
+echo "3/4 예약 실행 등록 (매일 06:00)"
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 sed -e "s#__REPO_DIR__#$REPO_DIR#g" -e "s#__HOME__#$HOME#g" \
   "$REPO_DIR/pipeline/deploy/com.jedchoi.ai-trend-radar.plist" > "$PLIST"

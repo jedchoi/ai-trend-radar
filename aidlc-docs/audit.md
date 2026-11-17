@@ -228,3 +228,61 @@
 **Security 준수**: http 는 로컬 · 개발 빌드 한정 유지, 토큰 .local 권한 600, 업로드 한도는 로컬 실행에서만 600
 
 ---
+## 사용자 입력 (변경 요청)
+**Timestamp**: 2026-11-17T16:00:00Z
+**User Input**: "내 로컬에는 docker desktop이 설치되어있어. 거기에 있는 postgres를 쓸수있도록 프로젝트를 정비해줘"
+**AI Response**: "저장소를 SQLite → PostgreSQL 16 (psycopg 3 + 연결 풀) 로 전환. 검색은 소문자 검색 문자열 + pg_trgm 색인 (없으면 순차 검색). 데이터베이스가 없으면 생성. 테스트는 실제 Postgres (TEST_DATABASE_URL) 로 실행. 계약 예시 응답이 전환 전과 바이트 단위로 같음을 확인"
+**Context**: Requirements 변경 (Infrastructure Design 재오픈: backend-server). TDD: 기존 72개 테스트를 Postgres 로 실행해 통과, 저장소 고유 동작 테스트 5개 추가 (77 passed, 커버리지 96%), 성능 p95 최대 117 ms (검색)
+
+---
+## 사용자 입력 (변경 요청)
+**Timestamp**: 2026-11-17T16:20:00Z
+**User Input**: "aidlc를 이용해서 다음의 작업을 완료해.
+
+1. 나는 모바일에 앱을 설치하면 바로 동작한다.
+2. 서버는 docker에서 구동되고, 실제 db에 현재 hugginface의 뉴스와 논문들을 가져와서 분석해서 저장한다. 원문도 저장한다.
+3. 내일부터 매일 스케쥴로 아침 6시에 새로운 뉴스나 논문들을 가져와서 업데이트하고 트렌드를 분석한다.
+4. 다른 ai 서비스에서 이어서 진행할 수있도록 모든걸 aidlc문서로 남긴다.
+5. 가져온 정보를 모바일에서 더 사용성이 좋도록 모바일 앱을 개선한다.
+
+
+나는 지금부터 대답할수없으니 모든 과정은 너의 추천대로 진행하고, 모든 작업이 완료될때까지 멈추지말고 계속 작업해."
+**AI Response**: "Standing Approval 유지 (사용자 응답 불가 명시). 새 주기 (cycle 2) 로 Requirements Analysis 부터 진행: FR-23 ~ FR-31, NFR-10 ~ NFR-12 추가 (requirements.md), 스토리 US-21 ~ US-27 추가. 결정: 뉴스 = Hugging Face 블로그 (RSS + 본문), 원문 = 뉴스 본문 · 논문 초록 원문 · 주목 논문 arXiv 본문 · HF 원본 JSON, 스케줄 = macOS launchd 매일 06:00 (호스트의 AI CLI 를 쓸 수 있도록 파이프라인은 PC 에서, 서버 · DB 는 Docker), 앱 = 빌드 시 서버 주소 내장"
+**Context**: 새 요구 주기 시작. 이 세션 셸에서는 사용자 Mac 의 Docker · USB 기기 · huggingface.co 에 접근할 수 없음 → 실행은 한 명령 (tool/radar-up.sh) 으로 사용자 Mac 에서 하도록 준비하고, 이 환경에서는 가짜 HF 서버 · 실제 Postgres 로 전체 흐름을 검증
+
+---
+## Requirements Analysis · User Stories (2주기)
+**Timestamp**: 2026-11-17T16:25:00Z
+**User Input**: (사용자 위임)
+**AI Response**: "requirements.md 2주기 절: FR-23 ~ FR-31, NFR-10 ~ NFR-12, 결정 4개 (뉴스 = HF 블로그, 논문 PDF 미저장 · 주목 논문 본문만, 스케줄 = PC launchd, 앱 = profile 빌드 + 주소 내장). stories.md Epic F: US-21 ~ US-27 과 AC"
+**Context**: Workflow Planning · Application Design · Units Generation 은 SKIP (unit · 컴포넌트 경계 변화 없음)
+
+---
+## Functional · NFR · Infrastructure Design (2주기, 3 unit)
+**Timestamp**: 2026-11-17T16:30:00Z
+**User Input**: (사용자 위임)
+**AI Response**: "construction/cycle2-design.md: 계약 추가 (PaperIn.full_text · source_raw, News API), 업무 규칙 BR-S30 ~ S35, BR-P30 ~ P35, BR-A20 ~ A28, 인프라 (deploy/local/compose.yml, launchd 06:00, pg_dump), 테스트 계획"
+**Context**: 설계 승인 = 사용자 위임
+
+---
+## Code Generation (2주기)
+**Timestamp**: 2026-11-17T17:40:00Z
+**User Input**: (사용자 위임)
+**AI Response**: "TDD: server 뉴스 · 원문 테스트 먼저 (RED 10 실패 확인) → 구현 (GREEN 88 passed). pipeline 뉴스 · 원문 테스트 14 + 5 → 115 passed. 실행: tool/radar-up.sh (Docker 서버 · 백필 · 06:00 · 앱 설치), tool/radar-daily.sh (잠금 · 서버 깨우기), tool/test-db.sh, CI Postgres. 앱: 뉴스 탭 · 상세 (원문), 논문 원문 (초록 펼치기 · 본문 읽기 화면 · arXiv), 읽음 표시, 글자 크기, 보관함 뉴스, 오늘 화면 소식 카드, 빌드 기본 주소 우선순위. 구현 중 설계 변경 2건: 논문 본문 출처 arXiv HTML → HF 논문 본문 (같은 원문, 호스트 하나), 뉴스 실패는 백필 결과에도 영향 없음 (BR-P34). 리허설 중 발견 · 수정: DB 세션 시간대에 따라 시각 표기가 달라짐 → 연결을 UTC 로 고정"
+**Context**: 앱은 Flutter 를 받을 수 없는 환경이라 컴파일 · 테스트 미실행 (코드 검토만). 1주기 테스트의 conftest 는 2주기 기능을 끈 설정으로 고정 (CollectConfig full_text=False, news=False), 프롬프트 목록 테스트에 NEWS 추가
+
+---
+## Build and Test (2주기)
+**Timestamp**: 2026-11-17T17:50:00Z
+**User Input**: (사용자 위임)
+**AI Response**: "server 88 · pipeline 115 · 통합 4 passed, 커버리지 96% · 93%, 성능 p95 최대 126 ms (Postgres, 1만 건), pip-audit 취약점 없음, 예시 응답 동기화 통과, shellcheck 통과. 한 명령 리허설 (가짜 docker · 가짜 HF · 가짜 claude CLI): 14일 백필 · 뉴스 8건 · 리포트 4개 · 재실행 멱등 확인"
+**Context**: ⚠️ 사용자 Mac 필요: flutter test (앱 54개), tool/radar-up.sh 실제 실행, 06:00 launchd, 실제 Hugging Face 수집
+
+---
+## Traceability Check · Operations 문서 · 인계 (2주기)
+**Timestamp**: 2026-11-17T17:55:00Z
+**User Input**: (사용자 위임)
+**AI Response**: "verification/phase-check-cycle2.md GAP 0 · ORPHAN 0 (실행 대기 4건 명시). handoff.md (상태 · 구조 · 실행 · 점검 · 규칙 · 결정 · 다음 일), README · AGENTS · deploy/server README · 설계 문서의 SQLite → PostgreSQL, 08:00 → 06:00 갱신 (과거 기록 · 계획 문서는 그대로)"
+**Context**: 2주기 완료
+
+---

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/library_store.dart';
+import '../../data/read_store.dart';
 import '../../logic/ask_prompt.dart';
 import '../../models/models.dart';
 import '../../services.dart';
@@ -9,6 +10,7 @@ import '../../state/load_controller.dart';
 import '../format.dart';
 import '../widgets/common.dart';
 import '../widgets/links.dart';
+import '../widgets/original_text.dart';
 import '../widgets/paper_widgets.dart';
 
 /// 뉴스 요약 (US-05 ~ US-08, US-13).
@@ -28,8 +30,10 @@ class _PaperScreenState extends State<PaperScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_c == null) {
-      final repo = Services.of(context).repository;
-      _c = LoadController(() => repo.paper(widget.paperId))..load();
+      final services = Services.of(context);
+      _c = LoadController(() => services.repository.paper(widget.paperId))..load();
+      // 다른 화면의 목록을 다시 그리게 하므로 빌드가 끝난 뒤에 (BR-A23)
+      WidgetsBinding.instance.addPostFrameCallback((_) => services.reads.mark(ReadStore.paper(widget.paperId)));
     }
   }
 
@@ -45,6 +49,12 @@ class _PaperScreenState extends State<PaperScreen> {
     await Clipboard.setData(ClipboardData(text: buildAskPrompt(paper)));
     messenger.showSnackBar(SnackBar(content: Text('질문을 복사했습니다. ${target.label} 에 붙여넣으세요.')));
     if (mounted) await openLink(context, target.url);
+  }
+
+  Future<void> _copyLink(Paper paper) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(ClipboardData(text: '${paper.title}\n${paper.hfUrl}'));
+    messenger.showSnackBar(const SnackBar(content: Text('제목과 링크를 복사했습니다')));
   }
 
   @override
@@ -71,6 +81,7 @@ class _PaperScreenState extends State<PaperScreen> {
                   icon: const Icon(Icons.forum_outlined),
                   onPressed: () => _ask(paper),
                 ),
+                IconButton(tooltip: '링크 복사', icon: const Icon(Icons.link), onPressed: () => _copyLink(paper)),
               ],
             ],
           ),
@@ -129,6 +140,7 @@ class _PaperScreenState extends State<PaperScreen> {
               child: ListTile(title: Text(g.term), subtitle: Text(g.explanation)),
             ),
         ],
+        ..._original(context, p),
         const SectionTitle('바로 가기'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -138,6 +150,12 @@ class _PaperScreenState extends State<PaperScreen> {
               label: const Text('논문 (Hugging Face)'),
               onPressed: () => openLink(context, p.hfUrl),
             ),
+            if (p.arxivUrl != null)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.article_outlined),
+                label: const Text('arXiv'),
+                onPressed: () => openLink(context, p.arxivUrl!),
+              ),
             if (p.githubUrl != null)
               OutlinedButton.icon(
                 icon: const Icon(Icons.code),
@@ -177,6 +195,44 @@ class _PaperScreenState extends State<PaperScreen> {
         _DetailBlock(icon: Icons.lightbulb_outline, title: '왜 중요한가', body: d.why),
         _DetailBlock(icon: Icons.build_outlined, title: '실무에 쓰려면', body: d.apply, highlight: true),
       ];
+
+  /// 원문 (US-23, BR-A24): 초록 원문 펼치기 + 본문 원문 읽기 화면.
+  List<Widget> _original(BuildContext context, Paper p) {
+    final text = Theme.of(context).textTheme;
+    final fullText = p.fullText;
+    return [
+      SectionTitle('원문', subtitle: fullText != null ? '초록 · 본문 (영어 원문 그대로)' : '초록 (영어 원문 그대로)'),
+      if (p.detail != null)
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          clipBehavior: Clip.antiAlias,
+          child: ExpansionTile(
+            leading: const Icon(Icons.notes),
+            title: const Text('초록 (Abstract)'),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              SelectableText(p.abstract.isEmpty ? '초록이 없습니다.' : p.abstract,
+                  style: text.bodyMedium?.copyWith(height: 1.55)),
+            ],
+          ),
+        ),
+      if (fullText != null)
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: ListTile(
+            leading: const Icon(Icons.menu_book_outlined),
+            title: const Text('본문 원문 읽기'),
+            subtitle: Text('${compact(fullText.length)}자'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => OriginalTextScreen(
+                    title: p.title, content: fullText, sourceLabel: 'Hugging Face 논문 페이지 본문 (arXiv 원문)'))),
+          ),
+        )
+      else
+        const EmptyNote('본문 원문은 주목 논문만 저장합니다. 아래 arXiv · Hugging Face 링크에서 읽을 수 있습니다.'),
+    ];
+  }
 
   List<Widget> _abstract(BuildContext context, Paper p) => [
         SectionTitle('초록', trailing: Badge2('초록 기반', color: Theme.of(context).colorScheme.outline)),
@@ -240,7 +296,7 @@ class _LibraryBar extends StatelessWidget {
           ChoiceChip(
             label: Text(s.label),
             selected: entry.status == s,
-            onSelected: (_) => library.setStatus(entry.paper.id, s),
+            onSelected: (_) => library.setStatus(entry.key, s),
           ),
       ]),
     );

@@ -101,6 +101,7 @@ def _paper(raw: RawPaper, topic: Topic, one_liner: str, featured: bool, source: 
         project_url=raw.project_url,
         organization=raw.organization,
         summary_source=source,
+        source_raw=raw.source_raw,
         **extra,
     )
 

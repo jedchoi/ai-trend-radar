@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `server/app/schemas.py` | API 계약 (요청 · 응답 형식, 입력 검증) | BR-S04, NFR-S06, NFR-S12 |
 | `server/app/periods.py` | 기간 · 급상승 · 연속 일수 순수 함수 | BR-S08, BR-S12, BR-S14 |
-| `server/app/repository.py` | SQLite (FTS5) 저장 · 조회, 날짜 단위 트랜잭션, ingest_log | BR-S02, BR-S03, BR-S05 ~ BR-S11, NFR-S11 |
+| `server/app/repository.py` | PostgreSQL 저장 · 조회 (psycopg 풀), 날짜 단위 트랜잭션, ingest_log, 뉴스 (2주기) | BR-S02, BR-S03, BR-S05 ~ BR-S11, NFR-S11 |
 | `server/app/trends.py` | 주 · 월 통계, 시계열, 기간 목록 | BR-S13 ~ BR-S20 |
 | `server/app/security.py` | 업로드 토큰 (해시 비교, 닫힌 실패) | BR-S01 |
 | `server/app/middleware.py` | 속도 제한, 본문 크기, 보안 헤더, 접근 로그, 최후 오류 처리 | NFR-S05 ~ NFR-S09 |

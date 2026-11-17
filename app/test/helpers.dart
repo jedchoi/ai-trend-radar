@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:ai_trend_radar/app.dart';
 import 'package:ai_trend_radar/data/cache_store.dart';
 import 'package:ai_trend_radar/data/library_store.dart';
+import 'package:ai_trend_radar/data/read_store.dart';
 import 'package:ai_trend_radar/data/repository.dart';
 import 'package:ai_trend_radar/data/settings_store.dart';
 import 'package:ai_trend_radar/services.dart';
@@ -43,6 +44,23 @@ MockClient sampleServer({List<String>? requests, int? failWith}) {
       if (match.isEmpty) return jsonResponse({'error': 'not_found'}, 404);
       return jsonResponse({'paper': match.first, 'related': []});
     }
+    if (path == '/api/v1/news') return jsonResponse(sample('news_list'));
+    if (path.startsWith('/api/v1/news/')) {
+      final id = Uri.decodeComponent(path.substring('/api/v1/news/'.length));
+      final detail = sample('news_detail');
+      if (detail['id'] == id) return jsonResponse(detail);
+      final items = (sample('news_list')['items'] as List).cast<Map<String, dynamic>>();
+      final match = items.where((n) => n['id'] == id).toList();
+      if (match.isEmpty) return jsonResponse({'error': 'not_found'}, 404);
+      return jsonResponse({
+        ...match.first,
+        'authors': <String>[],
+        'content': '(예시 본문)',
+        'key_points': <String>[],
+        'summary_source': 'ai',
+        'provider': 'anthropic',
+      });
+    }
     if (path == '/api/v1/trends/periods') return jsonResponse(sample('trend_periods'));
     if (path == '/api/v1/trends/series') return jsonResponse(sample('trend_series'));
     if (path.startsWith('/api/v1/trends/weekly/')) return jsonResponse(sample('trend_weekly'));
@@ -61,6 +79,7 @@ Future<AppServices> makeServices({
   return AppServices(
     settings: settings,
     library: LibraryStore(p),
+    reads: ReadStore(p),
     repository: RadarRepository(settings: settings, cache: CacheStore(p), client: client ?? sampleServer()),
   );
 }

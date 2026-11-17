@@ -1,14 +1,26 @@
-"""SQLite 저장소 (C-S4). SQL 은 파라미터 바인딩만 사용 (NFR-S06)."""
+"""PostgreSQL 저장소 (C-S4). SQL 은 파라미터 바인딩만 사용 (NFR-S06).
+
+- 연결: psycopg 3 + 연결 풀
+- 검색: 소문자 검색 문자열 (`search_text`) 에 단어별 부분 일치 (AND), pg_trgm 색인이 있으면 사용
+- 날짜 단위 업로드는 한 트랜잭션 (BR-S02)
+"""
 
 from __future__ import annotations
 
 import datetime as dt
-import json
+import logging
 import re
-import sqlite3
+import time
 from collections import defaultdict
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
+
+import psycopg
+from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 
 from app.periods import streak
 from app.schemas import (
@@ -17,55 +29,55 @@ from app.schemas import (
     DigestSummary,
     HubItem,
     HubItemIn,
+    News,
+    NewsBrief,
+    NewsIngest,
     Paper,
     PaperBrief,
     PaperIn,
 )
 
+log = logging.getLogger("radar.db")
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS digests (
-    date TEXT PRIMARY KEY,
-    headline_json TEXT NOT NULL,
+    date DATE PRIMARY KEY,
+    headline JSONB NOT NULL,
     provider TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS papers (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    date DATE NOT NULL,
     title TEXT NOT NULL,
-    authors_json TEXT NOT NULL,
+    authors JSONB NOT NULL,
     abstract TEXT NOT NULL,
-    published_at TEXT,
+    published_at DATE,
     upvotes INTEGER NOT NULL,
     topic TEXT NOT NULL,
-    keywords_json TEXT NOT NULL,
+    keywords TEXT[] NOT NULL,
     one_liner TEXT NOT NULL,
-    featured INTEGER NOT NULL,
-    detail_json TEXT,
-    glossary_json TEXT NOT NULL,
+    featured BOOLEAN NOT NULL,
+    detail JSONB,
+    glossary JSONB NOT NULL,
     github_url TEXT,
     github_stars INTEGER,
     project_url TEXT,
     organization TEXT,
-    summary_source TEXT NOT NULL
+    summary_source TEXT NOT NULL,
+    search_text TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_papers_date ON papers(date);
 CREATE INDEX IF NOT EXISTS idx_papers_upvotes ON papers(upvotes);
-CREATE TABLE IF NOT EXISTS paper_keywords (
-    paper_id TEXT NOT NULL,
-    keyword TEXT NOT NULL,
-    PRIMARY KEY (paper_id, keyword)
-);
-CREATE INDEX IF NOT EXISTS idx_keywords_keyword ON paper_keywords(keyword);
-CREATE VIRTUAL TABLE IF NOT EXISTS papers_fts USING fts5(title, one_liner, abstract, keywords);
+CREATE INDEX IF NOT EXISTS idx_papers_keywords ON papers USING GIN (keywords);
 CREATE TABLE IF NOT EXISTS hub_items (
-    date TEXT NOT NULL,
+    date DATE NOT NULL,
     kind TEXT NOT NULL,
     item_id TEXT NOT NULL,
     rank INTEGER NOT NULL,
     likes INTEGER NOT NULL,
-    downloads INTEGER,
-    trending_score REAL NOT NULL,
+    downloads BIGINT,
+    trending_score DOUBLE PRECISION NOT NULL,
     task TEXT,
     PRIMARY KEY (date, kind, item_id)
 );
@@ -75,20 +87,50 @@ CREATE TABLE IF NOT EXISTS reports (
     key TEXT NOT NULL,
     narrative TEXT NOT NULL,
     provider TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (period, key)
 );
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS full_text TEXT;
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS source_raw JSONB;
+CREATE TABLE IF NOT EXISTS news (
+    id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    published_at TIMESTAMPTZ NOT NULL,
+    organization TEXT,
+    authors JSONB NOT NULL,
+    image_url TEXT,
+    content TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    key_points JSONB NOT NULL,
+    keywords TEXT[] NOT NULL,
+    topic TEXT NOT NULL,
+    summary_source TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    source_raw JSONB,
+    search_text TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC, id);
 CREATE TABLE IF NOT EXISTS ingest_log (
-    seq INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts TEXT NOT NULL,
+    seq BIGSERIAL PRIMARY KEY,
+    ts TIMESTAMPTZ NOT NULL DEFAULT now(),
     kind TEXT NOT NULL,
     key TEXT NOT NULL,
     client_ip TEXT NOT NULL,
     count INTEGER NOT NULL
 );
 """
+# 검색 가속 (선택): 확장을 만들 권한이 없으면 건너뛴다. 없어도 1만 건 규모에서는 NFR-S01 충족
+TRGM = [
+    "CREATE EXTENSION IF NOT EXISTS pg_trgm",
+    "CREATE INDEX IF NOT EXISTS idx_papers_search ON papers USING GIN (search_text gin_trgm_ops)",
+    "CREATE INDEX IF NOT EXISTS idx_news_search ON news USING GIN (search_text gin_trgm_ops)",
+]
+TABLES = ["digests", "papers", "hub_items", "reports", "news", "ingest_log"]
 
 HF_PAPER_URL = "https://huggingface.co/papers/{}"
+ARXIV_URL = "https://arxiv.org/abs/{}"
 HUB_URL = {
     "model": "https://huggingface.co/{}",
     "dataset": "https://huggingface.co/datasets/{}",
@@ -100,92 +142,96 @@ SEARCH_MAX_WORD_LEN = 40
 _WORD = re.compile(r"\w+", re.UNICODE)
 
 
-def _now() -> str:
-    return dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
-
-
-def fts_query(q: str | None) -> str | None:
-    """BR-S10: 단어만 남기고 (최대 8개 · 40자) 접두어 AND 질의로 만든다. 단어가 없으면 None."""
+def search_words(q: str | None) -> list[str]:
+    """BR-S10: 단어만 남기고 (최대 8개 · 40자) 소문자로. 특수 문자는 버린다."""
     if not q:
-        return None
-    words = [w[:SEARCH_MAX_WORD_LEN] for w in _WORD.findall(q)][:SEARCH_MAX_WORDS]
-    if not words:
-        return None
-    return " AND ".join(f'"{w}"*' for w in words)
+        return []
+    return [w[:SEARCH_MAX_WORD_LEN].lower() for w in _WORD.findall(q)][:SEARCH_MAX_WORDS]
 
 
-def _insert_paper(conn: sqlite3.Connection, day: dt.date, paper: PaperIn) -> None:
-    cur = conn.execute(
-        """INSERT INTO papers (id, date, title, authors_json, abstract, published_at, upvotes, topic,
-           keywords_json, one_liner, featured, detail_json, glossary_json, github_url, github_stars,
-           project_url, organization, summary_source)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+def like_pattern(word: str) -> str:
+    """LIKE 와일드카드 (% _ \\) 를 글자 그대로 취급하도록 이스케이프한 부분 일치 패턴."""
+    escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def _search_text(paper: PaperIn) -> str:
+    return "\n".join([paper.title, paper.one_liner, paper.abstract, " ".join(paper.keywords)]).lower()
+
+
+def _insert_paper(conn: psycopg.Connection, day: dt.date, paper: PaperIn) -> None:
+    conn.execute(
+        """INSERT INTO papers (id, date, title, authors, abstract, published_at, upvotes, topic, keywords, one_liner,
+           featured, detail, glossary, github_url, github_stars, project_url, organization, summary_source, search_text,
+           full_text, source_raw)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (
             paper.id,
-            day.isoformat(),
+            day,
             paper.title,
-            json.dumps(paper.authors, ensure_ascii=False),
+            Jsonb(paper.authors),
             paper.abstract,
-            paper.published_at.isoformat() if paper.published_at else None,
+            paper.published_at,
             paper.upvotes,
             paper.topic.value,
-            json.dumps(paper.keywords, ensure_ascii=False),
+            paper.keywords,
             paper.one_liner,
-            int(paper.featured),
-            paper.detail.model_dump_json() if paper.detail else None,
-            json.dumps([g.model_dump() for g in paper.glossary], ensure_ascii=False),
+            paper.featured,
+            Jsonb(paper.detail.model_dump()) if paper.detail else None,
+            Jsonb([g.model_dump() for g in paper.glossary]),
             paper.github_url,
             paper.github_stars,
             paper.project_url,
             paper.organization,
             paper.summary_source.value,
+            _search_text(paper),
+            paper.full_text or None,
+            Jsonb(paper.source_raw) if paper.source_raw is not None else None,
         ),
     )
-    conn.execute(
-        "INSERT INTO papers_fts (rowid, title, one_liner, abstract, keywords) VALUES (?, ?, ?, ?, ?)",
-        (cur.lastrowid, paper.title, paper.one_liner, paper.abstract, " ".join(paper.keywords)),
-    )
-    conn.executemany(
-        "INSERT INTO paper_keywords (paper_id, keyword) VALUES (?, ?)",
-        [(paper.id, k) for k in paper.keywords],
-    )
 
 
-def _insert_hub(conn: sqlite3.Connection, day: dt.date, hub: list[HubItemIn]) -> None:
-    conn.executemany(
-        """INSERT INTO hub_items (date, kind, item_id, rank, likes, downloads, trending_score, task)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        [(day.isoformat(), h.kind, h.id, h.rank, h.likes, h.downloads, h.trending_score, h.task) for h in hub],
-    )
+def _insert_hub(conn: psycopg.Connection, day: dt.date, hub: list[HubItemIn]) -> None:
+    if not hub:
+        return
+    with conn.cursor() as cur:
+        cur.executemany(
+            """INSERT INTO hub_items (date, kind, item_id, rank, likes, downloads, trending_score, task)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+            [(day, h.kind, h.id, h.rank, h.likes, h.downloads, h.trending_score, h.task) for h in hub],
+        )
 
 
-def _row_to_paper(row: sqlite3.Row) -> Paper:
+def _row_to_paper(row: dict) -> Paper:
     return Paper.model_validate(
         {
             "id": row["id"],
             "date": row["date"],
             "title": row["title"],
-            "authors": json.loads(row["authors_json"]),
+            "authors": row["authors"],
             "abstract": row["abstract"],
             "published_at": row["published_at"],
             "upvotes": row["upvotes"],
             "topic": row["topic"],
-            "keywords": json.loads(row["keywords_json"]),
+            "keywords": list(row["keywords"]),
             "one_liner": row["one_liner"],
-            "featured": bool(row["featured"]),
-            "detail": json.loads(row["detail_json"]) if row["detail_json"] else None,
-            "glossary": json.loads(row["glossary_json"]),
+            "featured": row["featured"],
+            "detail": row["detail"],
+            "glossary": row["glossary"],
             "github_url": row["github_url"],
             "github_stars": row["github_stars"],
             "project_url": row["project_url"],
             "organization": row["organization"],
             "summary_source": row["summary_source"],
             "hf_url": HF_PAPER_URL.format(row["id"]),
+            "arxiv_url": ARXIV_URL.format(row["id"]),
+            "full_text": row.get("full_text"),
+            "has_full_text": bool(row.get("has_full_text")),
         }
     )
 
 
-def _row_to_brief(row: sqlite3.Row) -> PaperBrief:
+def _row_to_brief(row: dict) -> PaperBrief:
     return PaperBrief(
         id=row["id"],
         title=row["title"],
@@ -193,123 +239,237 @@ def _row_to_brief(row: sqlite3.Row) -> PaperBrief:
         topic=row["topic"],
         one_liner=row["one_liner"],
         upvotes=row["upvotes"],
-        featured=bool(row["featured"]),
+        featured=row["featured"],
         github_url=row["github_url"],
     )
 
 
+BRIEF_COLUMNS = "p.id, p.title, p.date, p.topic, p.one_liner, p.upvotes, p.featured, p.github_url"
+# 일일 요약: 본문 원문 · 원본 JSON 은 빼고 (BR-S31, BR-S32)
+DIGEST_PAPER_COLUMNS = (
+    "id, date, title, authors, abstract, published_at, upvotes, topic, keywords, one_liner, featured, detail, "
+    "glossary, github_url, github_stars, project_url, organization, summary_source, "
+    "full_text IS NOT NULL AS has_full_text"
+)
+DETAIL_PAPER_COLUMNS = DIGEST_PAPER_COLUMNS + ", full_text"
+NEWS_BRIEF_COLUMNS = "id, title, url, published_at, organization, image_url, summary, topic, keywords"
+NEWS_COLUMNS = NEWS_BRIEF_COLUMNS + ", authors, content, key_points, summary_source, provider"
+
+
+def ensure_database(url: str) -> None:
+    """대상 데이터베이스가 없으면 같은 서버의 postgres 데이터베이스로 접속해 만든다 (기존 Postgres 재사용 시)."""
+    info = conninfo_to_dict(url)
+    name = info.get("dbname")
+    if not name or name == "postgres":
+        return
+    admin = make_conninfo(url, dbname="postgres")
+    with psycopg.connect(admin, autocommit=True) as conn:
+        exists = conn.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if not exists:
+            conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+            log.info("created database %s", name)
+
+
 class Repository:
-    def __init__(self, db_path: str) -> None:
-        self.db_path = db_path
+    def __init__(self, database_url: str, pool_size: int = 5) -> None:
+        self.database_url = database_url
+        self.pool_size = pool_size
+        self.pool: ConnectionPool | None = None
 
     @contextmanager
-    def connect(self) -> Iterator[sqlite3.Connection]:
-        conn = sqlite3.connect(self.db_path, timeout=10)
-        try:
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA foreign_keys = ON")
+    def connect(self) -> Iterator[psycopg.Connection]:
+        if self.pool is None:
+            raise RuntimeError("repository not initialised")
+        with self.pool.connection() as conn:
+            conn.row_factory = dict_row
             yield conn
-        finally:
-            conn.close()
 
-    def init(self) -> None:
+    def init(self, wait_s: float = 30.0) -> None:
+        """DB 가 뜰 때까지 기다린 뒤 (도커 동시 시작) 스키마를 만든다."""
+        deadline = time.monotonic() + wait_s
+        while True:
+            try:
+                with suppress(psycopg.Error):  # 권한이 없으면 기존 데이터베이스를 그대로 쓴다
+                    ensure_database(self.database_url)
+                with psycopg.connect(self.database_url, autocommit=True) as conn:
+                    conn.execute(SCHEMA)
+                    for stmt in TRGM:
+                        try:
+                            conn.execute(stmt)
+                        except psycopg.Error:
+                            log.warning("pg_trgm unavailable; search uses sequential scan")
+                            break
+                break
+            except psycopg.OperationalError:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(1)
+        # 시각은 UTC 로 주고받는다 (DB 서버의 시간대 설정과 무관하게 같은 응답)
+        self.pool = ConnectionPool(
+            self.database_url, min_size=1, max_size=self.pool_size, kwargs={"options": "-c TimeZone=UTC"}, open=True
+        )
+
+    def close(self) -> None:
+        if self.pool is not None:
+            self.pool.close()
+            self.pool = None
+
+    def reset(self) -> None:
+        """모든 데이터 삭제 (테스트 · 예시 데이터 생성용)."""
         with self.connect() as conn:
-            conn.execute("PRAGMA journal_mode = WAL")
-            conn.executescript(SCHEMA)
+            conn.execute(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY")  # noqa: S608 - 고정된 테이블 이름
 
     # ---------- 쓰기 ----------
 
     def upsert_digest(self, digest: DigestIngest, client_ip: str) -> int:
         """BR-S02 · BR-S03: 날짜 단위 교체를 한 트랜잭션으로."""
-        day = digest.date.isoformat()
+        day = digest.date
         ids = [p.id for p in digest.papers]
-        with self.connect() as conn, conn:
-            stale = "SELECT rowid FROM papers WHERE date = ? OR id IN (SELECT value FROM json_each(?))"
-            params = (day, json.dumps(ids))
-            conn.execute(f"DELETE FROM papers_fts WHERE rowid IN ({stale})", params)  # noqa: S608
+        with self.connect() as conn, conn.transaction():
+            conn.execute("DELETE FROM papers WHERE date = %s OR id = ANY(%s)", (day, ids))
+            conn.execute("DELETE FROM hub_items WHERE date = %s", (day,))
             conn.execute(
-                "DELETE FROM paper_keywords WHERE paper_id IN "
-                "(SELECT id FROM papers WHERE date = ? OR id IN (SELECT value FROM json_each(?)))",
-                params,
-            )
-            conn.execute("DELETE FROM papers WHERE date = ? OR id IN (SELECT value FROM json_each(?))", params)
-            conn.execute("DELETE FROM hub_items WHERE date = ?", (day,))
-            conn.execute(
-                """INSERT INTO digests (date, headline_json, provider, updated_at) VALUES (?, ?, ?, ?)
-                   ON CONFLICT(date) DO UPDATE SET headline_json = excluded.headline_json,
-                   provider = excluded.provider, updated_at = excluded.updated_at""",
-                (day, json.dumps(digest.headline, ensure_ascii=False), digest.provider, _now()),
+                """INSERT INTO digests (date, headline, provider, updated_at) VALUES (%s, %s, %s, now())
+                   ON CONFLICT (date) DO UPDATE SET headline = EXCLUDED.headline, provider = EXCLUDED.provider,
+                   updated_at = now()""",
+                (day, Jsonb(digest.headline), digest.provider),
             )
             for paper in digest.papers:
-                _insert_paper(conn, digest.date, paper)
-            _insert_hub(conn, digest.date, digest.hub)
+                _insert_paper(conn, day, paper)
+            _insert_hub(conn, day, digest.hub)
             conn.execute(
-                "INSERT INTO ingest_log (ts, kind, key, client_ip, count) VALUES (?, 'daily', ?, ?, ?)",
-                (_now(), day, client_ip, len(digest.papers)),
+                "INSERT INTO ingest_log (kind, key, client_ip, count) VALUES ('daily', %s, %s, %s)",
+                (day.isoformat(), client_ip, len(digest.papers)),
             )
         return len(digest.papers)
 
     def upsert_report(self, period: str, key: str, narrative: str, provider: str, client_ip: str) -> None:
-        with self.connect() as conn, conn:
+        with self.connect() as conn, conn.transaction():
             conn.execute(
-                """INSERT INTO reports (period, key, narrative, provider, updated_at) VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(period, key) DO UPDATE SET narrative = excluded.narrative,
-                   provider = excluded.provider, updated_at = excluded.updated_at""",
-                (period, key, narrative, provider, _now()),
+                """INSERT INTO reports (period, key, narrative, provider, updated_at) VALUES (%s, %s, %s, %s, now())
+                   ON CONFLICT (period, key) DO UPDATE SET narrative = EXCLUDED.narrative,
+                   provider = EXCLUDED.provider, updated_at = now()""",
+                (period, key, narrative, provider),
             )
             conn.execute(
-                "INSERT INTO ingest_log (ts, kind, key, client_ip, count) VALUES (?, ?, ?, ?, 1)",
-                (_now(), f"report-{period}", key, client_ip),
+                "INSERT INTO ingest_log (kind, key, client_ip, count) VALUES (%s, %s, %s, 1)",
+                (f"report-{period}", key, client_ip),
             )
+
+    def upsert_news(self, news: NewsIngest, client_ip: str) -> int:
+        """BR-S30: id 단위 덮어쓰기, 한 트랜잭션."""
+        with self.connect() as conn, conn.transaction():
+            with conn.cursor() as cur:
+                cur.executemany(
+                    """INSERT INTO news (id, url, title, published_at, organization, authors, image_url, content,
+                       summary,
+                       key_points, keywords, topic, summary_source, provider, source_raw, search_text, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                       ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, title = EXCLUDED.title,
+                       published_at = EXCLUDED.published_at, organization = EXCLUDED.organization,
+                       authors = EXCLUDED.authors, image_url = EXCLUDED.image_url, content = EXCLUDED.content,
+                       summary = EXCLUDED.summary, key_points = EXCLUDED.key_points, keywords = EXCLUDED.keywords,
+                       topic = EXCLUDED.topic, summary_source = EXCLUDED.summary_source,
+                       provider = EXCLUDED.provider, source_raw = EXCLUDED.source_raw,
+                       search_text = EXCLUDED.search_text, updated_at = now()""",
+                    [
+                        (
+                            n.id,
+                            n.url,
+                            n.title,
+                            n.published_at,
+                            n.organization,
+                            Jsonb(n.authors),
+                            n.image_url,
+                            n.content,
+                            n.summary,
+                            Jsonb(n.key_points),
+                            n.keywords,
+                            n.topic.value,
+                            n.summary_source.value,
+                            news.provider,
+                            Jsonb(n.source_raw) if n.source_raw is not None else None,
+                            "\n".join([n.title, n.summary, " ".join(n.keywords), n.content]).lower(),
+                        )
+                        for n in news.items
+                    ],
+                )
+            conn.execute(
+                "INSERT INTO ingest_log (kind, key, client_ip, count) VALUES ('news', %s, %s, %s)",
+                (news.items[0].id, client_ip, len(news.items)),
+            )
+        return len(news.items)
+
+    def list_news(self, q: str | None, topic: str | None, limit: int, offset: int) -> tuple[list[NewsBrief], int]:
+        """BR-S33: 최신순, 단어별 부분 일치 (AND)."""
+        where: list[str] = []
+        params: list = []
+        for word in search_words(q):
+            where.append("search_text LIKE %s")
+            params.append(like_pattern(word))
+        if topic:
+            where.append("topic = %s")
+            params.append(topic)
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        with self.connect() as conn:
+            total = conn.execute(f"SELECT COUNT(*) AS n FROM news{clause}", params).fetchone()["n"]  # noqa: S608
+            rows = conn.execute(
+                f"SELECT {NEWS_BRIEF_COLUMNS} FROM news{clause} "  # noqa: S608
+                "ORDER BY published_at DESC, id ASC LIMIT %s OFFSET %s",
+                [*params, limit, offset],
+            ).fetchall()
+        return [NewsBrief.model_validate({**r, "keywords": list(r["keywords"])}) for r in rows], total
+
+    def get_news(self, news_id: str) -> News | None:
+        with self.connect() as conn:
+            row = conn.execute(f"SELECT {NEWS_COLUMNS} FROM news WHERE id = %s", (news_id,)).fetchone()  # noqa: S608
+        return News.model_validate({**row, "keywords": list(row["keywords"])}) if row else None
 
     # ---------- 읽기: 일일 요약 ----------
 
     def latest_date(self) -> dt.date | None:
         with self.connect() as conn:
-            row = conn.execute("SELECT MAX(date) AS d FROM digests").fetchone()
-        return dt.date.fromisoformat(row["d"]) if row["d"] else None
+            return conn.execute("SELECT MAX(date) AS d FROM digests").fetchone()["d"]
 
     def digest_dates(self) -> list[dt.date]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT date FROM digests ORDER BY date").fetchall()
-        return [dt.date.fromisoformat(r["date"]) for r in rows]
+            return [r["date"] for r in conn.execute("SELECT date FROM digests ORDER BY date")]
 
     def list_digests(self, limit: int) -> list[DigestSummary]:
         with self.connect() as conn:
             rows = conn.execute(
-                """SELECT d.date, d.headline_json, COUNT(p.id) AS n, COALESCE(SUM(p.featured), 0) AS f
+                """SELECT d.date, d.headline, COUNT(p.id) AS n, COUNT(p.id) FILTER (WHERE p.featured) AS f
                    FROM digests d LEFT JOIN papers p ON p.date = d.date
-                   GROUP BY d.date ORDER BY d.date DESC LIMIT ?""",
+                   GROUP BY d.date ORDER BY d.date DESC LIMIT %s""",
                 (limit,),
             ).fetchall()
         return [
-            DigestSummary(
-                date=r["date"], headline=json.loads(r["headline_json"]), paper_count=r["n"], featured_count=r["f"]
-            )
+            DigestSummary(date=r["date"], headline=r["headline"], paper_count=r["n"], featured_count=r["f"])
             for r in rows
         ]
 
     def get_digest(self, day: dt.date) -> Digest | None:
         with self.connect() as conn:
-            head = conn.execute("SELECT * FROM digests WHERE date = ?", (day.isoformat(),)).fetchone()
+            head = conn.execute("SELECT * FROM digests WHERE date = %s", (day,)).fetchone()
             if head is None:
                 return None
             papers = conn.execute(
-                "SELECT * FROM papers WHERE date = ? ORDER BY featured DESC, upvotes DESC, id ASC",
-                (day.isoformat(),),
+                f"SELECT {DIGEST_PAPER_COLUMNS} FROM papers WHERE date = %s "  # noqa: S608
+                "ORDER BY featured DESC, upvotes DESC, id ASC",
+                (day,),
             ).fetchall()
             hub = self._hub_for_day(conn, day)
         return Digest(
             date=day,
-            headline=json.loads(head["headline_json"]),
+            headline=head["headline"],
             provider=head["provider"],
             papers=[_row_to_paper(r) for r in papers],
             hub=hub,
         )
 
-    def _hub_for_day(self, conn: sqlite3.Connection, day: dt.date) -> list[HubItem]:
+    def _hub_for_day(self, conn: psycopg.Connection, day: dt.date) -> list[HubItem]:
         """BR-S07 (is_new), BR-S08 (streak_days)."""
-        rows = conn.execute("SELECT * FROM hub_items WHERE date = ?", (day.isoformat(),)).fetchall()
+        rows = conn.execute("SELECT * FROM hub_items WHERE date = %s", (day,)).fetchall()
         if not rows:
             return []
         history = self.hub_presence(conn, until=day)
@@ -336,25 +496,19 @@ class Repository:
         return items
 
     @staticmethod
-    def hub_presence(
-        conn: sqlite3.Connection, until: dt.date, since: dt.date | None = None
-    ) -> dict[tuple[str, str], set[dt.date]]:
+    def hub_presence(conn: psycopg.Connection, until: dt.date) -> dict[tuple[str, str], set[dt.date]]:
         """(kind, id) → 등장 날짜 집합."""
-        params: list[str] = [until.isoformat()]
-        sql = "SELECT kind, item_id, date FROM hub_items WHERE date <= ?"
-        if since is not None:
-            sql += " AND date >= ?"
-            params.append(since.isoformat())
         presence: dict[tuple[str, str], set[dt.date]] = defaultdict(set)
-        for r in conn.execute(sql, params):
-            presence[(r["kind"], r["item_id"])].add(dt.date.fromisoformat(r["date"]))
+        for r in conn.execute("SELECT kind, item_id, date FROM hub_items WHERE date <= %s", (until,)):
+            presence[(r["kind"], r["item_id"])].add(r["date"])
         return presence
 
     # ---------- 읽기: 논문 ----------
 
     def get_paper(self, paper_id: str) -> Paper | None:
         with self.connect() as conn:
-            row = conn.execute("SELECT * FROM papers WHERE id = ?", (paper_id,)).fetchone()
+            query = f"SELECT {DETAIL_PAPER_COLUMNS} FROM papers WHERE id = %s"  # noqa: S608
+            row = conn.execute(query, (paper_id,)).fetchone()
         return _row_to_paper(row) if row else None
 
     def related_papers(self, paper: Paper, limit: int = 5) -> list[PaperBrief]:
@@ -363,10 +517,12 @@ class Repository:
             return []
         with self.connect() as conn:
             rows = conn.execute(
-                """SELECT p.*, COUNT(*) AS shared FROM paper_keywords k JOIN papers p ON p.id = k.paper_id
-                   WHERE k.keyword IN (SELECT value FROM json_each(?)) AND p.id != ? AND p.date <= ?
-                   GROUP BY p.id ORDER BY p.date DESC, shared DESC, p.upvotes DESC, p.id ASC LIMIT ?""",
-                (json.dumps(paper.keywords), paper.id, paper.date.isoformat(), limit),
+                f"""SELECT {BRIEF_COLUMNS},
+                       cardinality(ARRAY(SELECT unnest(p.keywords) INTERSECT SELECT unnest(%s::text[]))) AS shared
+                   FROM papers p
+                   WHERE p.keywords && %s::text[] AND p.id <> %s AND p.date <= %s
+                   ORDER BY p.date DESC, shared DESC, p.upvotes DESC, p.id ASC LIMIT %s""",  # noqa: S608
+                (paper.keywords, paper.keywords, paper.id, paper.date, limit),
             ).fetchall()
         return [_row_to_brief(r) for r in rows]
 
@@ -381,30 +537,29 @@ class Repository:
         offset: int,
     ) -> tuple[list[PaperBrief], int]:
         """BR-S10 · BR-S11."""
-        joins, where, params = "", [], []
-        match = fts_query(q)
-        if match:
-            joins = " JOIN papers_fts f ON f.rowid = p.rowid"
-            where.append("papers_fts MATCH ?")
-            params.append(match)
+        where: list[str] = []
+        params: list = []
+        for word in search_words(q):
+            where.append("p.search_text LIKE %s")
+            params.append(like_pattern(word))
         if topic:
-            where.append("p.topic = ?")
+            where.append("p.topic = %s")
             params.append(topic)
         if since:
-            where.append("p.date >= ?")
-            params.append(since.isoformat())
+            where.append("p.date >= %s")
+            params.append(since)
         if until:
-            where.append("p.date <= ?")
-            params.append(until.isoformat())
+            where.append("p.date <= %s")
+            params.append(until)
         if featured is not None:
-            where.append("p.featured = ?")
-            params.append(int(featured))
+            where.append("p.featured = %s")
+            params.append(featured)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
-        base = f"FROM papers p{joins}{clause}"
         with self.connect() as conn:
-            total = conn.execute(f"SELECT COUNT(*) AS n {base}", params).fetchone()["n"]  # noqa: S608
+            total = conn.execute(f"SELECT COUNT(*) AS n FROM papers p{clause}", params).fetchone()["n"]  # noqa: S608
             rows = conn.execute(
-                f"SELECT p.* {base} ORDER BY p.date DESC, p.upvotes DESC, p.id ASC LIMIT ? OFFSET ?",  # noqa: S608
+                f"SELECT {BRIEF_COLUMNS} FROM papers p{clause} "  # noqa: S608
+                "ORDER BY p.date DESC, p.upvotes DESC, p.id ASC LIMIT %s OFFSET %s",
                 [*params, limit, offset],
             ).fetchall()
         return [_row_to_brief(r) for r in rows], total
@@ -414,39 +569,36 @@ class Repository:
     def topic_counts(self, start: dt.date, end: dt.date) -> dict[str, int]:
         with self.connect() as conn:
             rows = conn.execute(
-                "SELECT topic, COUNT(*) AS n FROM papers WHERE date BETWEEN ? AND ? GROUP BY topic",
-                (start.isoformat(), end.isoformat()),
+                "SELECT topic, COUNT(*) AS n FROM papers WHERE date BETWEEN %s AND %s GROUP BY topic", (start, end)
             ).fetchall()
         return {r["topic"]: r["n"] for r in rows}
 
     def keyword_counts(self, start: dt.date, end: dt.date) -> dict[str, int]:
         with self.connect() as conn:
             rows = conn.execute(
-                """SELECT k.keyword, COUNT(*) AS n FROM paper_keywords k JOIN papers p ON p.id = k.paper_id
-                   WHERE p.date BETWEEN ? AND ? GROUP BY k.keyword""",
-                (start.isoformat(), end.isoformat()),
+                """SELECT k AS keyword, COUNT(*) AS n FROM papers p, unnest(p.keywords) AS k
+                   WHERE p.date BETWEEN %s AND %s GROUP BY k""",
+                (start, end),
             ).fetchall()
         return {r["keyword"]: r["n"] for r in rows}
 
     def paper_count(self, start: dt.date, end: dt.date) -> int:
         with self.connect() as conn:
             return conn.execute(
-                "SELECT COUNT(*) AS n FROM papers WHERE date BETWEEN ? AND ?", (start.isoformat(), end.isoformat())
+                "SELECT COUNT(*) AS n FROM papers WHERE date BETWEEN %s AND %s", (start, end)
             ).fetchone()["n"]
 
     def has_digest_between(self, start: dt.date, end: dt.date) -> bool:
         with self.connect() as conn:
-            row = conn.execute(
-                "SELECT 1 FROM digests WHERE date BETWEEN ? AND ? LIMIT 1", (start.isoformat(), end.isoformat())
-            ).fetchone()
+            row = conn.execute("SELECT 1 FROM digests WHERE date BETWEEN %s AND %s LIMIT 1", (start, end)).fetchone()
         return row is not None
 
     def top_papers(self, start: dt.date, end: dt.date, limit: int = 5) -> list[PaperBrief]:
         with self.connect() as conn:
             rows = conn.execute(
-                """SELECT * FROM papers WHERE date BETWEEN ? AND ?
-                   ORDER BY upvotes DESC, date DESC, id ASC LIMIT ?""",
-                (start.isoformat(), end.isoformat(), limit),
+                f"""SELECT {BRIEF_COLUMNS} FROM papers p WHERE p.date BETWEEN %s AND %s
+                   ORDER BY p.upvotes DESC, p.date DESC, p.id ASC LIMIT %s""",  # noqa: S608
+                (start, end, limit),
             ).fetchall()
         return [_row_to_brief(r) for r in rows]
 
@@ -457,6 +609,6 @@ class Repository:
     def get_report(self, period: str, key: str) -> tuple[str, str] | None:
         with self.connect() as conn:
             row = conn.execute(
-                "SELECT narrative, provider FROM reports WHERE period = ? AND key = ?", (period, key)
+                "SELECT narrative, provider FROM reports WHERE period = %s AND key = %s", (period, key)
             ).fetchone()
         return (row["narrative"], row["provider"]) if row else None

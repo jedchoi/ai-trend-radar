@@ -1,6 +1,6 @@
 # Domain Entities — backend-server
 
-| 엔티티 | 저장 (SQLite 테이블) | 키 | 주요 속성 | 근거 |
+| 엔티티 | 저장 (PostgreSQL 테이블, 2주기) | 키 | 주요 속성 | 근거 |
 | --- | --- | --- | --- | --- |
 | Digest | `digests` | `date` | `headline` (JSON, 0~3줄), `provider`, `updated_at` | FR-11, US-01 |
 | Paper | `papers` | `id` | `date`, `title`, `authors`, `abstract`, `published_at`, `upvotes`, `topic`, `keywords`, `one_liner`, `featured`, `detail`, `glossary`, `github_url`, `github_stars`, `project_url`, `organization`, `summary_source` | FR-03, FR-11, US-05 |

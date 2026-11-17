@@ -28,8 +28,11 @@
     "project_url": null,
     "organization": null,
     "summary_source": "ai",
+    "full_text": "1 Introduction\n\n(예시 본문) Who Remembers What? Multi-Granularity Memory Extraction for Multi-User, Multi-Agent Interaction. (예시 초록)\n\n2 Method\n\n(예시 본문)",
     "date": "2026-11-13",
-    "hf_url": "https://huggingface.co/papers/2611.10439"
+    "hf_url": "https://huggingface.co/papers/2611.10439",
+    "arxiv_url": "https://arxiv.org/abs/2611.10439",
+    "has_full_text": true
   },
   "related": [
     {

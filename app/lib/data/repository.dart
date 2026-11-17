@@ -66,6 +66,21 @@ class RadarRepository {
     return _get(Uri(path: '/api/v1/papers', queryParameters: params).toString(), SearchResult.fromJson);
   }
 
+  /// 뉴스 목록 (FR-27, BR-A22).
+  Future<Loaded<NewsList>> news({String query = '', Topic? topic, int offset = 0, int limit = 20}) {
+    final params = <String, String>{
+      if (query.trim().isNotEmpty) 'q': query.trim(),
+      if (topic != null) 'topic': topic.slug,
+      'limit': '$limit',
+      'offset': '$offset',
+    };
+    return _get(Uri(path: '/api/v1/news', queryParameters: params).toString(), NewsList.fromJson);
+  }
+
+  /// 뉴스 상세. id 에 '/' 가 들어 있으므로 조각마다 인코딩한다.
+  Future<Loaded<News>> newsDetail(String id) =>
+      _get('/api/v1/news/${id.split('/').map(Uri.encodeComponent).join('/')}', News.fromJson);
+
   Future<Loaded<Periods>> periods() => _get('/api/v1/trends/periods', Periods.fromJson);
 
   Future<Loaded<TrendReport>> trend(String period, String key) =>

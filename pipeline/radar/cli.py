@@ -1,4 +1,4 @@
-"""명령 (C-P9): radar daily | report | check | token"""
+"""명령 (C-P9): radar daily | backfill | news | report | check | token"""
 
 from __future__ import annotations
 
@@ -54,6 +54,8 @@ def parser() -> argparse.ArgumentParser:
     b.add_argument("--days", type=_days, default=90, help="며칠 치 (1~120, 기본 90)")
     b.add_argument("--until", type=_date, help="마지막 날짜 (기본: 한국 시간 어제)")
     b.add_argument("--no-reports", action="store_true", help="주 · 월 리포트를 만들지 않음")
+    n = sub.add_parser("news", help="Hugging Face 블로그 새 글 → 본문 원문 → 분석 → 업로드")
+    n.add_argument("--days", type=_days, default=3, help="며칠 안의 글 (1~120, 기본 3)")
     sub.add_parser("report", help="오늘이 월요일 · 1일이면 주간 · 월간 리포트 문장 업로드")
     c = sub.add_parser("check", help="설정 · 키 · 서버 연결 확인")
     c.add_argument("--offline", action="store_true", help="서버 연결은 확인하지 않음")
@@ -115,6 +117,11 @@ def main(argv: list[str] | None = None) -> int:
     built = build_runner(config)
     if args.command == "report":
         return built.run_reports() or EXIT_OK
+    if args.command == "news":
+        problems = built.config_problems()
+        for problem in problems:
+            print(f"설정 문제: {problem}")
+        return EXIT_CONFIG if problems else built.run_news(args.days)
     if args.command == "backfill":
         return built.run_backfill(days=args.days, until=args.until, reports=not args.no_reports)
     code = built.run_daily(

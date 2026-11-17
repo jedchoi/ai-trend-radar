@@ -11,7 +11,7 @@
 | --- | --- | --- |
 | `api` | `server/Dockerfile` (python:3.12-slim-bookworm, 비 root `app` 사용자, 읽기 전용 루트, `/data` 볼륨) | 내부 네트워크 8000 만 |
 | `proxy` | `caddy:2.8.4-alpine`, `deploy/server/Caddyfile` | 80 · 443 (HTTPS 자동 발급, HSTS) |
-| 볼륨 | `radar-data` (SQLite), `caddy-data` (인증서) | - |
+| 볼륨 | `radar-pg` (PostgreSQL 16), `caddy-data` (인증서) | - |
 
 ## 환경 변수 (`deploy/server/.env`, 저장소 밖에서 작성)
 

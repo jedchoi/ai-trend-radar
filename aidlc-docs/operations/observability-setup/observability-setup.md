@@ -5,7 +5,7 @@
 | 서버 상태 · 최신 날짜 | `GET /api/v1/health` | `latest_date` 가 어제보다 오래되면 파이프라인 실패 |
 | 접근 로그 (요청 id · 상태 · 소요 ms · IP) | api 컨테이너 stdout (JSON), Caddy 접근 로그 | `docker compose logs api` |
 | 보안 이벤트 (`auth_failed`, `rate_limited`, `ingest_token_unconfigured`) | api stdout | `docker compose logs api \| grep security_event` |
-| 업로드 감사 | SQLite `ingest_log` (추가 전용) | `sqlite3 radar.db 'select * from ingest_log order by seq desc limit 10'` |
+| 업로드 감사 | PostgreSQL `ingest_log` (추가 전용) | `tool/radar-up.sh --psql` 후 `select * from ingest_log order by seq desc limit 10;` |
 | 파이프라인 실행 기록 | Mac `~/.local/share/ai-trend-radar/runs.jsonl` | `status`, `stage`, `ai_fallbacks` |
 | 파이프라인 로그 | Mac `~/Library/Logs/ai-trend-radar.log` | `tail -f` |
 

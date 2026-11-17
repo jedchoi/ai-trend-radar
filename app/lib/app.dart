@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'services.dart';
 import 'ui/screens/library_screen.dart';
+import 'ui/screens/news_screen.dart';
 import 'ui/screens/search_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/screens/today_screen.dart';
@@ -24,12 +25,24 @@ class RadarApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Services(
       services: services,
-      child: MaterialApp(
-        title: 'AI 트렌드 레이더',
-        debugShowCheckedModeBanner: false,
-        theme: _theme(Brightness.light),
-        darkTheme: _theme(Brightness.dark),
-        home: const HomeShell(),
+      child: ListenableBuilder(
+        listenable: services.settings,
+        builder: (context, _) => MaterialApp(
+          title: 'AI 트렌드 레이더',
+          debugShowCheckedModeBanner: false,
+          theme: _theme(Brightness.light),
+          darkTheme: _theme(Brightness.dark),
+          // BR-A25: 기기 글자 크기 × 앱 설정 배율
+          builder: (context, child) {
+            final media = MediaQuery.of(context);
+            final scale = media.textScaler.scale(1) * services.settings.textScale;
+            return MediaQuery(
+              data: media.copyWith(textScaler: TextScaler.linear(scale)),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          home: const HomeShell(),
+        ),
       ),
     );
   }
@@ -45,7 +58,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  static const _titles = ['AI 트렌드 레이더', '트렌드 분석', '논문 검색', '보관함'];
+  static const _titles = ['AI 트렌드 레이더', 'Hugging Face 소식', '트렌드 분석', '논문 검색', '보관함'];
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +76,20 @@ class _HomeShellState extends State<HomeShell> {
       ),
       body: IndexedStack(
         index: _index,
-        children: const [TodayScreen(), TrendScreen(), SearchScreen(), LibraryScreen()],
+        children: [
+          TodayScreen(onOpenNews: () => setState(() => _index = 1)),
+          const NewsScreen(),
+          const TrendScreen(),
+          const SearchScreen(),
+          const LibraryScreen(),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.newspaper_outlined), selectedIcon: Icon(Icons.newspaper), label: '오늘'),
+          NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: '오늘'),
+          NavigationDestination(icon: Icon(Icons.newspaper_outlined), selectedIcon: Icon(Icons.newspaper), label: '뉴스'),
           NavigationDestination(icon: Icon(Icons.insights_outlined), selectedIcon: Icon(Icons.insights), label: '트렌드'),
           NavigationDestination(icon: Icon(Icons.search), label: '검색'),
           NavigationDestination(

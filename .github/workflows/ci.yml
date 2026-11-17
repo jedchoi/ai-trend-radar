@@ -12,6 +12,18 @@ permissions:
 jobs:
   server:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: radar
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U radar" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://radar@127.0.0.1:55432/radar_test
+      SAMPLES_DATABASE_URL: postgresql://radar@127.0.0.1:55432/radar_samples
     defaults:
       run:
         working-directory: server
@@ -46,12 +58,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t ai-trend-radar-api:${{ github.sha }} server
-      - name: smoke test
+      - name: smoke test (Postgres + API, deploy/local/compose.yml 과 같은 구성)
         run: |
-          docker run -d --name api -p 8000:8000 -e INGEST_TOKEN_SHA256=$(printf t | sha256sum | cut -d' ' -f1) \
-            --read-only --tmpfs /tmp -v radar-data:/data ai-trend-radar-api:${{ github.sha }}
-          for i in $(seq 1 30); do curl -fs localhost:8000/api/v1/health && break; sleep 1; done
+          docker network create radar
+          docker run -d --name db --network radar -e POSTGRES_USER=radar -e POSTGRES_PASSWORD=pw postgres:16-alpine
+          docker run -d --name api --network radar -p 8000:8000 \
+            -e DATABASE_URL=postgresql://radar:pw@db:5432/radar \
+            -e INGEST_TOKEN_SHA256=$(printf t | sha256sum | cut -d' ' -f1) \
+            --read-only --tmpfs /tmp ai-trend-radar-api:${{ github.sha }}
+          for i in $(seq 1 60); do curl -fs localhost:8000/api/v1/health && break; sleep 1; done
           curl -fs localhost:8000/api/v1/health
+          curl -fs localhost:8000/api/v1/news
 
   pipeline:
     runs-on: ubuntu-24.04
@@ -71,6 +88,18 @@ jobs:
   integration:
     runs-on: ubuntu-24.04
     needs: [server, pipeline]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: radar
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U radar" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://radar@127.0.0.1:55432/radar_test
+      SAMPLES_DATABASE_URL: postgresql://radar@127.0.0.1:55432/radar_samples
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

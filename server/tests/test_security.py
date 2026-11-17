@@ -7,10 +7,8 @@ from app.main import create_app
 from tests.conftest import AUTH, TOKEN, make_digest
 
 
-def _client(tmp_path, **kw):
-    settings = Settings(
-        db_path=str(tmp_path / "s.db"), ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest(), **kw
-    )
+def _client(db_url, **kw):
+    settings = Settings(database_url=db_url, ingest_token_sha256=hashlib.sha256(TOKEN.encode()).hexdigest(), **kw)
     return TestClient(create_app(settings))
 
 
@@ -25,25 +23,25 @@ def test_security_headers_on_every_response(client):
         assert "x-request-id" in headers
 
 
-def test_public_rate_limit(tmp_path):
+def test_public_rate_limit(clean_db):
     # NFR-S05: 공개 API 한도 초과 → 429
-    with _client(tmp_path, public_rate_per_min=3) as c:
+    with _client(clean_db, public_rate_per_min=3) as c:
         codes = [c.get("/api/v1/health").status_code for _ in range(4)]
     assert codes == [200, 200, 200, 429]
 
 
-def test_ingest_rate_limit_is_separate(tmp_path):
+def test_ingest_rate_limit_is_separate(clean_db):
     # NFR-S05: 업로드 한도는 따로
-    with _client(tmp_path, ingest_rate_per_min=1, public_rate_per_min=100) as c:
+    with _client(clean_db, ingest_rate_per_min=1, public_rate_per_min=100) as c:
         first = c.post("/api/v1/ingest/daily", json=make_digest("2026-11-13"), headers=AUTH).status_code
         second = c.post("/api/v1/ingest/daily", json=make_digest("2026-11-13"), headers=AUTH).status_code
         public = c.get("/api/v1/health").status_code
     assert (first, second, public) == (200, 429, 200)
 
 
-def test_body_size_limit(tmp_path):
+def test_body_size_limit(clean_db):
     # NFR-S06: 본문 최대 크기 초과 → 413
-    with _client(tmp_path, max_body_bytes=1000) as c:
+    with _client(clean_db, max_body_bytes=1000) as c:
         payload = make_digest("2026-11-13", headline=["x" * 300, "y" * 300, "z" * 300])
         payload["provider"] = "none"
         big = {**payload, "papers": []}
@@ -58,8 +56,8 @@ def test_docs_disabled_by_default(client):
     assert client.get("/openapi.json").status_code == 404
 
 
-def test_docs_enabled_when_configured(tmp_path):
-    with _client(tmp_path, enable_docs=True) as c:
+def test_docs_enabled_when_configured(clean_db):
+    with _client(clean_db, enable_docs=True) as c:
         assert c.get("/openapi.json").status_code == 200
 
 
@@ -105,9 +103,9 @@ def test_access_log_line(client, caplog):
     assert "duration_ms" in record
 
 
-def test_rate_limit_tells_client_when_to_retry(tmp_path):
+def test_rate_limit_tells_client_when_to_retry(clean_db):
     # NFR-S05: 429 에 Retry-After (초) 를 붙여 파이프라인이 기다렸다 다시 보낼 수 있게
-    with _client(tmp_path, ingest_rate_per_min=1, public_rate_per_min=100) as c:
+    with _client(clean_db, ingest_rate_per_min=1, public_rate_per_min=100) as c:
         c.post("/api/v1/ingest/daily", json=make_digest("2026-11-13"), headers=AUTH)
         resp = c.post("/api/v1/ingest/daily", json=make_digest("2026-11-13"), headers=AUTH)
     assert resp.status_code == 429

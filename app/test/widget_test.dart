@@ -1,5 +1,6 @@
 // 화면 위젯 테스트 (NFR-A06). 파일 이름은 `flutter create` 가 기본 테스트를 만들지 않도록 widget_test.dart 로 둔다.
 import 'package:ai_trend_radar/data/library_store.dart';
+import 'package:ai_trend_radar/data/read_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -163,10 +164,98 @@ void main() {
   testWidgets('글자 크기 1.3 에서도 넘침 없음 (NFR-A05)', (tester) async {
     await pumpApp(tester, textScale: 1.3);
     expect(tester.takeException(), isNull);
-    for (final tab in ['트렌드', '검색', '보관함']) {
+    for (final tab in ['뉴스', '트렌드', '검색', '보관함']) {
       await tester.tap(find.text(tab).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets('오늘: 최신 소식 카드 → 뉴스 탭 (BR-A27, AC-22-1)', (tester) async {
+    await pumpApp(tester);
+    expect(find.text('Hugging Face 소식'), findsOneWidget);
+    expect(find.textContaining('SimReady Assets'), findsOneWidget);
+    await tester.tap(find.text('전체 보기'));
+    await tester.pumpAndSettle();
+    expect(find.text('블로그 글 3건 · 최신순'), findsOneWidget);
+    expect(find.text('llama.cpp v1'), findsOneWidget);
+  });
+
+  testWidgets('뉴스 상세: 요약 · 핵심 · 원문 · 보관 · 읽음 (AC-22-2, AC-26-2, AC-26-4)', (tester) async {
+    final services = await pumpApp(tester);
+    await tester.tap(find.text('뉴스'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('llama.cpp v1'));
+    await tester.pumpAndSettle();
+    expect(find.text('요약'), findsOneWidget);
+    expect(find.text('AI 요약'), findsOneWidget);
+    expect(find.text('핵심'), findsOneWidget);
+    expect(find.text('양자화 · 최적화 백엔드'), findsOneWidget);
+    expect(find.text('원문'), findsOneWidget);
+    expect(find.textContaining('run multi-modal LLMs'), findsOneWidget);
+    expect(services.reads.isRead(ReadStore.news('ggml-org/llama-cpp-v1')), isTrue);
+    await tester.tap(find.byTooltip('보관함에 저장'));
+    await tester.pumpAndSettle();
+    expect(services.library.contains('ggml-org/llama-cpp-v1', kind: LibraryKind.news), isTrue);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('읽음'), findsOneWidget);
+    await tester.tap(find.text('보관함'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('뉴스 · 읽을 것'), findsOneWidget);
+    await tester.tap(find.text('llama.cpp v1'));
+    await tester.pumpAndSettle();
+    expect(find.text('핵심'), findsOneWidget);
+  });
+
+  testWidgets('뉴스 검색 (AC-22-3)', (tester) async {
+    final requests = <String>[];
+    await pumpApp(tester, services: await makeServices(client: sampleServer(requests: requests)));
+    await tester.tap(find.text('뉴스'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('news-search')), 'llama');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(requests.where((r) => r.startsWith('/api/v1/news?q=llama')), isNotEmpty);
+  });
+
+  testWidgets('논문 원문: 초록 펼치기 · 본문 읽기 화면 · arXiv (AC-23-1)', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.textContaining('Who Remembers What?').first);
+    await tester.pumpAndSettle();
+    final abstractTile = find.text('초록 (Abstract)');
+    await tester.scrollUntilVisible(abstractTile, 300, scrollable: find.byType(Scrollable).first);
+    await tester.tap(abstractTile);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('(예시 초록)'), findsWidgets);
+    final reader = find.text('본문 원문 읽기');
+    await tester.scrollUntilVisible(reader, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(find.text('arXiv'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('arXiv'), findsOneWidget);
+    await tester.scrollUntilVisible(reader, -300, scrollable: find.byType(Scrollable).first);
+    await tester.tap(reader);
+    await tester.pumpAndSettle();
+    expect(find.text('Method'), findsNothing); // '2 Method' 는 문단 (소제목 표시는 ## 만)
+    expect(find.textContaining('1 Introduction'), findsOneWidget);
+  });
+
+  testWidgets('읽은 논문은 목록에 읽음 표시 (AC-26-2)', (tester) async {
+    final services = await makeServices();
+    await services.reads.mark(ReadStore.paper('2611.15777'));
+    await pumpApp(tester, services: services);
+    expect(find.text('읽음'), findsWidgets);
+  });
+
+  testWidgets('글자 크기 설정이 앱 전체에 적용 (AC-26-3)', (tester) async {
+    final services = await pumpApp(tester);
+    await tester.tap(find.byTooltip('설정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('아주 크게'));
+    await tester.pumpAndSettle();
+    expect(services.settings.textScale, 1.3);
+    final context = tester.element(find.text('아주 크게'));
+    expect(MediaQuery.of(context).textScaler.scale(10), closeTo(13, 0.001));
+    expect(tester.takeException(), isNull);
   });
 }

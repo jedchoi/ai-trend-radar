@@ -6,7 +6,7 @@
 | 웹 프레임워크 | FastAPI 0.163.1, Starlette 1.10.0 | 형식 검사 (Pydantic) 와 API 계약 문서화, 사용자 경험 |
 | 서버 | Uvicorn 0.54.0 | FastAPI 표준 ASGI 서버 |
 | 형식 검사 | Pydantic 2.14.3 | 계약의 정본, 파이프라인과 같은 라이브러리 |
-| DB | SQLite (표준 라이브러리, FTS5) | 하루 1회 쓰기 · 읽기 위주 · 단일 서버. 별도 DB 서버 운영 부담 없음. 1만 건 기준 NFR-S01 충족 예상 (Build and Test 에서 측정) |
+| DB | PostgreSQL 16 + psycopg 3.3 (연결 풀 psycopg-pool 3.3), 검색 = 소문자 검색 문자열 부분 일치 + pg_trgm GIN 색인 | 2주기 (FR-23): 사용자가 Docker Desktop 의 Postgres 사용을 요청. 원문 (최대 200,000자) · JSONB 원본 저장. 1주기의 SQLite FTS5 를 대체. 1만 건 p95 117 ms (검색) 측정 |
 | HTTPS 프록시 | Caddy 2.8.4 | 인증서 자동 발급 · 갱신, 설정 파일 짧음 |
 | 컨테이너 | Docker Compose | 사용자가 iworship 에서 사용 중 |
 | 테스트 | pytest 9.2.0, pytest-cov 7.1.0, hypothesis 6.170.15, httpx 0.28.1 | PBT (부분) · 커버리지 |

@@ -1,5 +1,7 @@
 import datetime as dt
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import httpx
@@ -36,12 +38,14 @@ class FakeHF:
         markdown: dict | None = None,
         fail: dict | None = None,
         fail_dates: set | None = None,
+        pages: dict | None = None,
     ):
         self.days = days or {}
         self.trending = trending or {"models": [], "datasets": [], "spaces": []}
         self.markdown = markdown or {}
         self.fail = fail or {}  # path → [status, ...] 순서대로 먼저 반환
         self.fail_dates = fail_dates or set()  # 이 날짜의 daily_papers 는 항상 500
+        self.pages = pages or {}  # 경로 → 본문 (블로그 RSS · 글 HTML)
         self.calls: list[str] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -58,6 +62,8 @@ class FakeHF:
         if path in ("/api/models", "/api/datasets", "/api/spaces"):
             kind = path.rsplit("/", 1)[1]
             return httpx.Response(200, json=self.trending[kind][: int(params["limit"])])
+        if path in self.pages:
+            return httpx.Response(200, text=self.pages[path])
         if path.startswith("/papers/") and path.endswith(".md"):
             pid = path[len("/papers/") : -3]
             if pid in self.markdown:
@@ -75,6 +81,7 @@ class FakeServer:
         self.stats = stats or {}
         self.uploads: list[dict] = []
         self.reports: list[dict] = []
+        self.news: list[dict] = []
         self.auth: list[str] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -88,6 +95,10 @@ class FakeServer:
             body = json.loads(request.content)
             self.uploads.append(body)
             return httpx.Response(200, json={"date": body["date"], "papers": len(body["papers"])})
+        if request.method == "POST" and path == "/api/v1/ingest/news":
+            body = json.loads(request.content)
+            self.news.append(body)
+            return httpx.Response(200, json={"news": len(body["items"])})
         if request.method == "POST" and path == "/api/v1/ingest/report":
             self.reports.append(json.loads(request.content))
             return httpx.Response(200, json={})
@@ -123,7 +134,8 @@ def config(tmp_path: Path) -> Config:
     return Config(
         server=ServerConfig(url="https://radar.example.com", token_env="RADAR_TEST_TOKEN"),
         ai=AIConfig(provider="none"),
-        collect=CollectConfig(models=2, datasets=1, spaces=1),
+        # 1주기 테스트는 원문 · 뉴스 없이 (2주기 기능은 test_news.py · test_fulltext.py 가 켜서 검사)
+        collect=CollectConfig(models=2, datasets=1, spaces=1, full_text=False, news=False),
         select=SelectConfig(max_featured=2, focus_topics=["agents"]),
         paths=PathsConfig(data_dir=str(tmp_path / "data")),
     )
@@ -135,3 +147,18 @@ def token_env(monkeypatch):
 
 
 KST_NOON = dt.datetime(2026, 11, 17, 3, 0, tzinfo=dt.UTC)  # 한국 시간 2026-11-17 (화) 12:00
+
+
+SERVER_SCHEMAS = Path(__file__).resolve().parents[2] / "server" / "app" / "schemas.py"
+
+
+@pytest.fixture(scope="session")
+def contract():
+    """서버 계약 (server/app/schemas.py) 을 직접 읽는다."""
+    if not SERVER_SCHEMAS.exists():
+        pytest.skip("server/ 없음")
+    spec = importlib.util.spec_from_file_location("server_schemas", SERVER_SCHEMAS)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["server_schemas"] = module
+    spec.loader.exec_module(module)
+    return module

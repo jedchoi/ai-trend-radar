@@ -50,6 +50,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  static String _scaleLabel(double scale) {
+    if (scale < 1) return '작게';
+    if (scale == 1) return '보통';
+    if (scale < 1.2) return '크게';
+    return '아주 크게';
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = Services.of(context).settings;
@@ -80,6 +87,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton(onPressed: () => _saveUrl(settings), child: const Text('저장')),
+              ]),
+            ),
+            if (settings.defaultServerUrl.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: Text('설치할 때 넣은 기본 주소: ${settings.defaultServerUrl} (비우고 저장하면 이 주소로 돌아갑니다)',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
+            const SectionTitle('글자 크기', subtitle: '기기 글자 크기에 곱해집니다'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final scale in SettingsStore.textScales)
+                  ChoiceChip(
+                    label: Text(_scaleLabel(scale)),
+                    selected: settings.textScale == scale,
+                    onSelected: (_) => settings.setTextScale(scale),
+                  ),
               ]),
             ),
             const SectionTitle('관심 키워드', subtitle: '맞는 논문을 목록 위로 올리고 "관심" 표시를 붙입니다'),

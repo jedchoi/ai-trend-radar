@@ -32,9 +32,9 @@ WORDS = [
 ]
 
 
-def _seed(db_path: str) -> None:
+def _seed(database_url: str) -> None:
     rnd = random.Random(7)
-    repo = Repository(db_path)
+    repo = Repository(database_url)
     repo.init()
     start = dt.date(2026, 5, 1)
     pid = 0
@@ -61,11 +61,12 @@ def _seed(db_path: str) -> None:
             for r in range(1, 8)
         ][:20]
         repo.upsert_digest(DigestIngest.model_validate({"date": day.isoformat(), "papers": papers, "hub": hub}), "t")
+    repo.close()
 
 
 @pytest.mark.perf
 def test_p95_under_300ms(client, settings):
-    _seed(settings.db_path)
+    _seed(settings.database_url)
     paths = [
         "/api/v1/digests/latest",
         "/api/v1/papers?q=agent%20moe",
