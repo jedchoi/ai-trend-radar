@@ -286,3 +286,10 @@
 **Context**: 2주기 완료
 
 ---
+## 사용자 입력 (요청)
+**Timestamp**: 2026-11-18T00:10:00Z
+**User Input**: "릴리즈로 빌드해서 apk 생성해줘"
+**AI Response**: "이 세션 셸 · Mac 의 Linux 가상 환경 모두 Flutter SDK · pub.dev · Gradle · Maven 접근 차단 (403) 이라 직접 빌드 불가 확인. tool/build-apk.sh 추가: 서버 주소 (기본 http://<PC IP>:<포트>) 를 RADAR_SERVER_URL 로 넣어 flutter build apk --release, http 주소면 빌드 동안만 release manifest overlay 로 cleartext 허용 후 삭제, dist/ 에 버전 · 날짜 이름으로 복사 · SHA-256 출력, --install 로 adb 설치. 사용자 Mac 에서 실행 필요"
+**Context**: Operations (Deployment Execution, 앱 배포 산출물). Security: release 기본 https 유지, http 허용은 http 주소 빌드에 한정. shellcheck 통과
+
+---

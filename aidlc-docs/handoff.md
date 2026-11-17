@@ -51,7 +51,8 @@ tail -f .local/logs/backfill.log # 첫 채우기 진행
 - 이미 쓰고 있는 Postgres 가 있으면: `tool/radar-up.sh --database-url postgresql://user:pw@localhost:5432/radar` (DB 가 없으면 만든다)
 - 분석 AI 는 처음 실행 때 자동 선택 (claude CLI → gemini CLI → Ollama → 없음). 바꾸려면 `.local/pipeline.toml` 의 `[ai]` (형식: `pipeline/deploy/config.example.toml`)
 - 비밀: `.local/ingest-token` (권한 600), `.local/.env` (DB 비밀번호 · 토큰 해시). git 제외
-- 앱은 profile 빌드 (로컬 http 허용). 서버 주소는 빌드 때 `RADAR_SERVER_URL` 로 들어가고 앱 설정에서 바꿀 수 있다. PC 의 IP 가 바뀌면 `tool/local-app.sh` 로 다시 설치하거나 앱 설정에서 고친다
+- 릴리즈 APK 파일: `tool/build-apk.sh` → `dist/ai-trend-radar-<버전>-<날짜>.apk` (`--install` 로 USB 기기에 설치). http 서버 주소면 그 빌드에만 http 허용 (빌드 중에만 `android/app/src/release/AndroidManifest.xml` 을 만들고 지움), 서명은 Flutter 기본 debug 키 (직접 설치용)
+- `radar-up.sh` 가 설치하는 앱은 profile 빌드 (로컬 http 허용). 서버 주소는 빌드 때 `RADAR_SERVER_URL` 로 들어가고 앱 설정에서 바꿀 수 있다. PC 의 IP 가 바뀌면 `tool/local-app.sh` 로 다시 설치하거나 앱 설정에서 고친다
 
 ## 4. 점검 (변경 후 반드시)
 

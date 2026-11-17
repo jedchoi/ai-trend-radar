@@ -14,6 +14,8 @@ tool/radar-up.sh            # Postgres + API (Docker) → 지난 90일 채우기
 tool/radar-up.sh --status   # 서버 · 일정 · 최근 실행
 ```
 
+릴리즈 APK 파일만 만들려면 `tool/build-apk.sh` (서버 주소 내장, 결과는 `dist/`, `--install` 로 USB 기기에 설치).
+
 이미 쓰는 Postgres 가 있으면 `--database-url postgresql://user:pw@localhost:5432/radar`. 그 밖의 옵션은 `tool/radar-up.sh --help`. 다른 AI 도구로 이어서 작업할 때는 `aidlc-docs/handoff.md` 부터 읽는다.
 
 | 폴더 | 내용 | 기술 |

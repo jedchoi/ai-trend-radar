@@ -22,3 +22,13 @@
 6. 다음 날 06:00 이후 `tool/radar-up.sh --status` (또는 `.local/logs/daily.log`) 와 앱에서 새 날짜 · 뉴스 확인
 
 이 세션에서 실행하지 않은 이유: 운영 환경 (서버 · Mac launchd) 은 명령만 제시한다는 Operations 안전 규칙, 서버 주소 · 도메인이 확인되지 않음.
+
+## 릴리즈 APK (2026-11-18)
+
+| 할 일 | 명령 | 확인 |
+| --- | --- | --- |
+| 로컬 서버용 릴리즈 APK | `tool/build-apk.sh` | `dist/ai-trend-radar-1.0.0-<날짜>.apk` 생성, 출력의 서버 주소가 `http://<PC IP>:8000` |
+| 공개 서버용 | `tool/build-apk.sh --server-url https://<도메인>` | http 허용 파일을 만들지 않음 (release 기본 https) |
+| 설치 | `tool/build-apk.sh --install` 또는 APK 파일을 휴대폰에서 열기 | 앱 첫 화면에 데이터 |
+
+결정: 로컬 서버가 http 이므로 http 주소로 빌드할 때만 cleartext 를 허용한다 (개인용 빌드, SECURITY-01 예외를 빌드 단위로 한정). 서명은 Flutter 기본 debug 키 — 스토어 배포 시 별도 키 필요.

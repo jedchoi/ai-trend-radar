@@ -12,6 +12,7 @@ tool/radar-up.sh                                # Docker Desktop: Postgres + API
 tool/radar-up.sh --server-only | --status | --logs | --stop | --backup | --psql
 tool/radar-daily.sh                             # 06:00 일정이 부르는 실행 (어제 + 빠진 날 + 새 뉴스 + 리포트)
 tool/test-db.sh [--stop]                        # 테스트용 Postgres (127.0.0.1:55432, 메모리)
+tool/build-apk.sh [--server-url URL] [--install] # 릴리즈 APK (서버 주소 내장, http 주소면 그 빌드만 http 허용) → dist/
 tool/local-backfill.sh [--days 90]              # 로컬 서버에 지난 N 일 실제 데이터 (radar backfill)
 tool/local-pipeline.sh                          # 로컬 서버로 어제 하루치
 tool/local-app.sh -d <기기>                     # 로컬 서버 주소로 앱 설치 · 실행

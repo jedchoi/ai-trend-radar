@@ -17,3 +17,4 @@ app/android/local.properties
 app/ios/Flutter/Generated.xcconfig
 sbom-*.json
 .local/
+dist/
