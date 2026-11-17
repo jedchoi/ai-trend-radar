@@ -1,5 +1,7 @@
 # 3주기 설계 — 한국어 · 영어 전환 (Functional · NFR · Infrastructure Design, 3 unit 공통)
 
+> **4주기에서 개정됨** (`cycle4-design.md`): 조회 API 의 `lang` · `untranslated` 는 없어지고 응답마다 `i18n {ko, en}` 을 준다. 번역은 요약류만 (제목 · 초록 · 본문 · 뉴스 본문은 원문 그대로). 아래의 translations 표 · 업로드 API · 번역 검색 · 파이프라인 상태 · 시간 상한은 그대로 쓴다.
+
 근거: `inception/requirements/requirements.md` 3주기 (FR-32 ~ FR-37, NFR-13 ~ NFR-15), `inception/user-stories/stories.md` Epic G (US-28 ~ US-31).
 승인: 확인 질문 3개 답 (audit.md 2026-11-18T00:20:00Z) + 사용자 위임.
 

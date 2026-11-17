@@ -1,3 +1,4 @@
+import 'i18n.dart';
 import 'json.dart';
 import 'topic.dart';
 
@@ -14,19 +15,26 @@ class NewsBrief {
     required this.id,
     required this.title,
     required this.url,
-    required this.summary,
+    required String summary,
     required this.topic,
     required this.keywords,
     this.publishedAt,
     this.organization,
     this.imageUrl,
-  });
+    this.i18n = const I18n(),
+  }) : _summary = summary;
 
   final String id;
   final String title;
   final String url;
-  final String summary;
+  final String _summary;
   final Topic topic;
+
+  /// 요약 · 핵심의 두 언어 (FR-39). 제목 · 본문은 원문 그대로.
+  final I18n i18n;
+
+  /// 지금 언어의 요약 (BR-A50).
+  String get summary => i18n.pick((j) => i18nString(j, 'summary'), _summary);
   final List<String> keywords;
   final DateTime? publishedAt;
   final String? organization;
@@ -46,6 +54,7 @@ class NewsBrief {
       publishedAt: date(j, 'published_at'),
       organization: strOrNull(j, 'organization'),
       imageUrl: strOrNull(j, 'image_url'),
+      i18n: I18n.fromJson(j),
     );
   }
 }
@@ -56,19 +65,23 @@ class News {
     required this.brief,
     required this.authors,
     required this.content,
-    required this.keyPoints,
+    required List<String> keyPoints,
     required this.summarySource,
     required this.provider,
-    this.untranslated = false,
-  });
+  }) : _keyPoints = keyPoints;
 
   final NewsBrief brief;
   final List<String> authors;
   final String content;
-  final List<String> keyPoints;
+  final List<String> _keyPoints;
+
+  /// 지금 언어의 핵심 (BR-A50).
+  List<String> get keyPoints => brief.i18n.pick((j) => i18nStrings(j, 'key_points'), _keyPoints);
   final String summarySource;
   final String provider;
-  final bool untranslated;
+
+  /// 고른 언어의 요약이 아직 없음 (BR-A51).
+  bool get untranslated => brief.i18n.pending('summary');
 
   String get id => brief.id;
   bool get aiSummary => summarySource == 'ai';
@@ -80,7 +93,6 @@ class News {
         keyPoints: strings(j, 'key_points'),
         summarySource: str(j, 'summary_source', 'abstract'),
         provider: str(j, 'provider', 'none'),
-        untranslated: boolean(j, 'untranslated'),
       );
 }
 

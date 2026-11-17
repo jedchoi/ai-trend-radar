@@ -329,8 +329,6 @@ class Runner:
             self.analyzer.provider,
             self.server,
             self.data / "translated.json",
-            chunk_chars=cfg.chunk_chars,
-            full_text=cfg.full_text,
             max_minutes=cfg.max_minutes if max_minutes is None else max_minutes,
         )
         try:

@@ -57,8 +57,8 @@ class SettingsStore extends ChangeNotifier {
   /// BR-A30: 'ko' (기본) · 'en'.
   String get language => _language;
 
-  /// 내용을 다시 받아야 하는지 판단하는 값 (서버 주소 · 언어).
-  String get sourceKey => '$_serverUrl|$_language';
+  /// 내용을 다시 받아야 하는지 판단하는 값. 언어는 포함하지 않는다 (응답에 두 언어가 함께 옴, BR-A51).
+  String get sourceKey => _serverUrl;
   String get defaultServerUrl => _defaultServerUrl;
   double get textScale => _textScale;
   bool get configured => _serverUrl.isNotEmpty;

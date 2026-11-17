@@ -449,18 +449,19 @@ class Repository:
             )
         return len(ingest.items)
 
-    def translations(self, kind: str, keys: list[str], lang: str, light: bool = False) -> dict[str, dict]:
-        """key → 번역 필드. light 면 긴 필드 (원문 본문) 를 빼고 가져온다."""
+    def translations_all(self, kind: str, keys: list[str]) -> dict[str, dict[str, dict]]:
+        """key → {언어 → 번역 필드} (BR-S51: 항목 전체를 한 번에)."""
         if not keys:
             return {}
-        column = "fields - 'full_text' - 'content'" if light else "fields"
+        result: dict[str, dict[str, dict]] = defaultdict(dict)
         with self.connect() as conn:
             rows = conn.execute(
-                f"SELECT key, {column} AS fields FROM translations "  # noqa: S608 - 고정된 두 식 중 하나
-                "WHERE kind = %s AND lang = %s AND key = ANY(%s)",
-                (kind, lang, list(dict.fromkeys(keys))),
+                "SELECT key, lang, fields FROM translations WHERE kind = %s AND key = ANY(%s)",
+                (kind, list(dict.fromkeys(keys))),
             ).fetchall()
-        return {r["key"]: r["fields"] for r in rows}
+        for r in rows:
+            result[r["key"]][r["lang"]] = r["fields"]
+        return result
 
     def list_news(self, q: str | None, topic: str | None, limit: int, offset: int) -> tuple[list[NewsBrief], int]:
         """BR-S33: 최신순, 단어별 부분 일치 (AND)."""

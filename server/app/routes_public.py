@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Path, Query, Request
 
@@ -24,9 +24,6 @@ from app.schemas import (
     TopicSeries,
     TrendReport,
 )
-
-# BR-S40: 응답 언어. 없으면 원래 응답 (호환)
-LangQuery = Annotated[Literal["ko", "en"] | None, Query()]
 
 router = APIRouter(prefix="/api/v1")
 
@@ -55,29 +52,25 @@ def health(request: Request) -> Health:
 
 
 @router.get("/digests", response_model=DigestList)
-def list_digests(
-    request: Request, limit: Annotated[int, Query(ge=1, le=90)] = 30, lang: LangQuery = None
-) -> DigestList:
-    return DigestList(items=_i18n(request).digest_list(_repo(request).list_digests(limit), lang))
+def list_digests(request: Request, limit: Annotated[int, Query(ge=1, le=90)] = 30) -> DigestList:
+    return DigestList(items=_i18n(request).digest_list(_repo(request).list_digests(limit)))
 
 
 @router.get("/digests/latest", response_model=Digest)
-def latest_digest(request: Request, lang: LangQuery = None) -> Digest:
+def latest_digest(request: Request) -> Digest:
     latest = _found(_repo(request).latest_date())
-    return _i18n(request).digest(_found(_repo(request).get_digest(latest)), lang)
+    return _i18n(request).digest(_found(_repo(request).get_digest(latest)))
 
 
 @router.get("/digests/{day}", response_model=Digest)
-def get_digest(request: Request, day: dt.date, lang: LangQuery = None) -> Digest:
-    return _i18n(request).digest(_found(_repo(request).get_digest(day)), lang)
+def get_digest(request: Request, day: dt.date) -> Digest:
+    return _i18n(request).digest(_found(_repo(request).get_digest(day)))
 
 
 @router.get("/papers/{paper_id}", response_model=PaperWithRelated)
-def get_paper(
-    request: Request, paper_id: Annotated[str, Path(pattern=PAPER_ID_PATTERN)], lang: LangQuery = None
-) -> PaperWithRelated:
+def get_paper(request: Request, paper_id: Annotated[str, Path(pattern=PAPER_ID_PATTERN)]) -> PaperWithRelated:
     paper = _found(_repo(request).get_paper(paper_id))
-    return _i18n(request).paper(PaperWithRelated(paper=paper, related=_repo(request).related_papers(paper)), lang)
+    return _i18n(request).paper(PaperWithRelated(paper=paper, related=_repo(request).related_papers(paper)))
 
 
 @router.get("/papers", response_model=SearchResult)
@@ -90,12 +83,11 @@ def search_papers(
     featured: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
     offset: Annotated[int, Query(ge=0, le=1000)] = 0,
-    lang: LangQuery = None,
 ) -> SearchResult:
     items, total = _repo(request).search_papers(
         q, topic.value if topic else None, since, until, featured, limit, offset
     )
-    return SearchResult(items=_i18n(request).briefs(items, lang), total=total)
+    return SearchResult(items=_i18n(request).briefs(items), total=total)
 
 
 @router.get("/news", response_model=NewsList)
@@ -105,15 +97,14 @@ def list_news(
     topic: Topic | None = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
     offset: Annotated[int, Query(ge=0, le=1000)] = 0,
-    lang: LangQuery = None,
 ) -> NewsList:
     items, total = _repo(request).list_news(q, topic.value if topic else None, limit, offset)
-    return NewsList(items=_i18n(request).news_list(items, lang), total=total)
+    return NewsList(items=_i18n(request).news_list(items), total=total)
 
 
 @router.get("/news/{news_id:path}", response_model=News)
-def get_news(request: Request, news_id: Annotated[str, Path(pattern=NEWS_ID_PATTERN)], lang: LangQuery = None) -> News:
-    return _i18n(request).news(_found(_repo(request).get_news(news_id)), lang)
+def get_news(request: Request, news_id: Annotated[str, Path(pattern=NEWS_ID_PATTERN)]) -> News:
+    return _i18n(request).news(_found(_repo(request).get_news(news_id)))
 
 
 @router.get("/trends/periods", response_model=Periods)
@@ -126,34 +117,30 @@ def series(request: Request, weeks: Annotated[int, Query(ge=1, le=26)] = 12) -> 
     return _trends(request).topic_series(weeks)
 
 
-def _report(request: Request, period: str, key: str | None, lang: str | None) -> TrendReport:
+def _report(request: Request, period: str, key: str | None) -> TrendReport:
     key = _found(key)
     try:
         report = _found(_trends(request).period_stats(period, key))
     except ValueError as exc:  # 53주가 없는 해의 W53 등
         raise HTTPException(status_code=422) from exc
-    return _i18n(request).report(report, lang)
+    return _i18n(request).report(report)
 
 
 @router.get("/trends/weekly/latest", response_model=TrendReport)
-def weekly_latest(request: Request, lang: LangQuery = None) -> TrendReport:
-    return _report(request, "week", _trends(request).latest_key("week"), lang)
+def weekly_latest(request: Request) -> TrendReport:
+    return _report(request, "week", _trends(request).latest_key("week"))
 
 
 @router.get("/trends/weekly/{key}", response_model=TrendReport)
-def weekly(
-    request: Request, key: Annotated[str, Path(pattern=WEEK_KEY_PATTERN)], lang: LangQuery = None
-) -> TrendReport:
-    return _report(request, "week", key, lang)
+def weekly(request: Request, key: Annotated[str, Path(pattern=WEEK_KEY_PATTERN)]) -> TrendReport:
+    return _report(request, "week", key)
 
 
 @router.get("/trends/monthly/latest", response_model=TrendReport)
-def monthly_latest(request: Request, lang: LangQuery = None) -> TrendReport:
-    return _report(request, "month", _trends(request).latest_key("month"), lang)
+def monthly_latest(request: Request) -> TrendReport:
+    return _report(request, "month", _trends(request).latest_key("month"))
 
 
 @router.get("/trends/monthly/{key}", response_model=TrendReport)
-def monthly(
-    request: Request, key: Annotated[str, Path(pattern=MONTH_KEY_PATTERN)], lang: LangQuery = None
-) -> TrendReport:
-    return _report(request, "month", key, lang)
+def monthly(request: Request, key: Annotated[str, Path(pattern=MONTH_KEY_PATTERN)]) -> TrendReport:
+    return _report(request, "month", key)

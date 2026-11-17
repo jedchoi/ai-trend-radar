@@ -71,10 +71,7 @@ class OriginalTextScreen extends StatelessWidget {
   }
 }
 
-/// 원문 영역 이름 (BR-A35): 영어 = Original, 한국어 = 번역이 있으면 "본문 (번역)", 없으면 "원문".
-String originalTitle({required bool translated}) => tr(translated ? '본문 (번역)' : '원문', 'Original');
+/// 원문 영역 이름 (BR-A52): 원문은 언제나 영어 그대로.
+String originalTitle() => tr('원문', 'Original');
 
-String originalSubtitle(int length, {required bool translated}) => tr(
-      translated ? '${compact(length)}자 · 한국어 번역' : '${compact(length)}자 · 영어 원문 그대로',
-      '${compact(length)} characters',
-    );
+String originalSubtitle(int length) => tr('${compact(length)}자 · 영어 원문 그대로', '${compact(length)} characters');

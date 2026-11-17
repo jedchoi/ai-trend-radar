@@ -139,8 +139,7 @@ void main() {
       client: sampleServer(failWith: 503),
       prefs: {
         'settings:server_url': testServer,
-        'cache:/api/v1/digests/latest?lang=ko':
-            online.repository.cache.prefs.getString('cache:/api/v1/digests/latest?lang=ko')!,
+        'cache:/api/v1/digests/latest': online.repository.cache.prefs.getString('cache:/api/v1/digests/latest')!,
       },
     );
     await pumpApp(tester, services: offline);
@@ -192,8 +191,8 @@ void main() {
     expect(find.text('AI 요약'), findsOneWidget);
     expect(find.text('핵심'), findsOneWidget);
     expect(find.text('양자화 · 최적화 백엔드'), findsOneWidget);
-    expect(find.text('본문 (번역)'), findsOneWidget); // 3주기: 한국어 번역 본문 (news_detail_ko)
-    expect(find.textContaining('멀티모달 LLM'), findsOneWidget);
+    expect(find.text('원문'), findsOneWidget); // 뉴스 본문은 영어 원문 그대로 (FR-41)
+    expect(find.textContaining('run multi-modal LLMs'), findsOneWidget);
     expect(services.reads.isRead(ReadStore.news('ggml-org/llama-cpp-v1')), isTrue);
     await tester.tap(find.byTooltip('보관함에 저장'));
     await tester.pumpAndSettle();

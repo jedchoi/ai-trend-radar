@@ -27,7 +27,6 @@ class PaperScreen extends StatefulWidget {
 
 class _PaperScreenState extends State<PaperScreen> {
   LoadController<PaperWithRelated>? _c;
-  String? _lang;
 
   @override
   void didChangeDependencies() {
@@ -55,16 +54,6 @@ class _PaperScreenState extends State<PaperScreen> {
     if (mounted) await openLink(context, target.url);
   }
 
-  /// BR-A30: 언어가 바뀌면 그 언어로 다시 받는다.
-  void _reloadOnLanguage(String lang) {
-    if (_lang != null && _lang != lang) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _c!.load();
-      });
-    }
-    _lang = lang;
-  }
-
   Future<void> _copyLink(Paper paper) async {
     final messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: '${paper.title}\n${paper.hfUrl}'));
@@ -74,7 +63,6 @@ class _PaperScreenState extends State<PaperScreen> {
   @override
   Widget build(BuildContext context) {
     final services = Services.of(context);
-    _reloadOnLanguage(services.settings.language);
     return ListenableBuilder(
       listenable: Listenable.merge([_c!, services.library]),
       builder: (context, _) {
@@ -219,8 +207,8 @@ class _PaperScreenState extends State<PaperScreen> {
     final text = Theme.of(context).textTheme;
     final fullText = p.fullText;
     return [
-      // 논문 원문은 언어와 무관하게 영어 그대로 (FR-34 개정, BR-A35)
-      SectionTitle(originalTitle(translated: false),
+      // 논문 원문은 언어와 상관없이 영어 그대로 (FR-41, BR-A52)
+      SectionTitle(originalTitle(),
           subtitle: fullText != null
               ? tr('초록 · 본문 (영어 원문 그대로)', 'Abstract · full text')
               : tr('초록 (영어 원문 그대로)', 'Abstract')),

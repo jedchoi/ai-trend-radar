@@ -220,18 +220,18 @@ Line300 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, 
 
 
 class PaperTranslation(Strict):
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)] | None = None
+    """요약류만 (FR-38). 원문 (제목 · 초록 · 본문) 은 번역하지 않는다 (FR-41): 보내면 422."""
+
     one_liner: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)] | None = None
-    # 논문 원문 (초록 · 본문) 은 번역하지 않는다 (FR-34 개정 2026-11-18): abstract · full_text 를 보내면 422
     detail: PaperDetail | None = None
     glossary: list[GlossaryItem] | None = Field(default=None, max_length=5)
 
 
 class NewsTranslation(Strict):
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)] | None = None
+    """요약류만 (FR-38). 뉴스 제목 · 본문은 원문 그대로 (FR-41)."""
+
     summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)] | None = None
     key_points: list[Line300] | None = Field(default=None, max_length=6)
-    content: Annotated[str, StringConstraints(min_length=1, max_length=FULL_TEXT_MAX)] | None = None
 
 
 class DigestTranslation(Strict):
@@ -289,6 +289,9 @@ class TranslationResult(BaseModel):
 
 # ---------- 응답 ----------
 
+# 4주기 (FR-39): 언어 → 요약류 필드. 원래 값의 언어 (BR-S50) 와 번역 언어가 함께 들어간다
+I18n = dict[str, dict]
+
 
 class Paper(PaperIn):
     model_config = ConfigDict(extra="ignore")
@@ -297,7 +300,7 @@ class Paper(PaperIn):
     arxiv_url: str
     has_full_text: bool = False
     source_raw: dict | None = Field(default=None, exclude=True)  # BR-S31: 응답에 넣지 않는다
-    untranslated: bool = False  # BR-S40: lang 을 줬는데 번역이 없음
+    i18n: I18n = Field(default_factory=dict)  # FR-39: {"ko": {...}, "en": {...}} 요약류
 
 
 class PaperBrief(BaseModel):
@@ -309,6 +312,7 @@ class PaperBrief(BaseModel):
     upvotes: int
     featured: bool
     github_url: str | None = None
+    i18n: I18n = Field(default_factory=dict)
 
 
 class HubItem(HubItemIn):
@@ -324,7 +328,7 @@ class Digest(BaseModel):
     provider: str
     papers: list[Paper]
     hub: list[HubItem]
-    untranslated: bool = False
+    i18n: I18n = Field(default_factory=dict)
 
 
 class DigestSummary(BaseModel):
@@ -332,6 +336,7 @@ class DigestSummary(BaseModel):
     headline: list[str]
     paper_count: int
     featured_count: int
+    i18n: I18n = Field(default_factory=dict)
 
 
 class DigestList(BaseModel):
@@ -389,7 +394,7 @@ class TrendReport(BaseModel):
     hub_steady: list[HubSteady]
     narrative: str | None = None
     narrative_provider: str | None = None
-    untranslated: bool = False
+    i18n: I18n = Field(default_factory=dict)
 
 
 class TopicSeries(BaseModel):
@@ -427,6 +432,7 @@ class NewsBrief(BaseModel):
     summary: str
     topic: Topic
     keywords: list[str]
+    i18n: I18n = Field(default_factory=dict)
 
 
 class News(NewsBrief):
@@ -435,7 +441,6 @@ class News(NewsBrief):
     key_points: list[str]
     summary_source: SummarySource
     provider: str
-    untranslated: bool = False
 
 
 class NewsList(BaseModel):

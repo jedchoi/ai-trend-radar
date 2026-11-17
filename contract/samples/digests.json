@@ -8,7 +8,23 @@
         "영상 · 주행 세계 모델이 물리 일관성을 높이는 방향으로 빠르게 늘고 있다."
       ],
       "paper_count": 11,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "빠른 'System One' 모델은 정확도가 높아도 신뢰도는 낮을 수 있다는 평가가 나왔다.",
+            "에이전트 연구는 판단 모델의 역할 분담과 다중 사용자 메모리로 옮겨 가고 있다.",
+            "영상 · 주행 세계 모델이 물리 일관성을 높이는 방향으로 빠르게 늘고 있다."
+          ]
+        },
+        "en": {
+          "headline": [
+            "A new evaluation finds fast 'System One' models can be accurate yet unreliable.",
+            "Agent research is moving toward judge-model roles and multi-user memory.",
+            "Video and driving world models are quickly improving physical consistency."
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-12",
@@ -16,7 +32,14 @@
         "2026-11-12 예시 요약"
       ],
       "paper_count": 4,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-12 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-11",
@@ -24,7 +47,14 @@
         "2026-11-11 예시 요약"
       ],
       "paper_count": 6,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-11 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-10",
@@ -32,7 +62,14 @@
         "2026-11-10 예시 요약"
       ],
       "paper_count": 9,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-10 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-09",
@@ -40,7 +77,14 @@
         "2026-11-09 예시 요약"
       ],
       "paper_count": 4,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-09 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-08",
@@ -48,7 +92,14 @@
         "2026-11-08 예시 요약"
       ],
       "paper_count": 8,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-08 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-07",
@@ -56,7 +107,14 @@
         "2026-11-07 예시 요약"
       ],
       "paper_count": 4,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-07 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-06",
@@ -64,7 +122,14 @@
         "2026-11-06 예시 요약"
       ],
       "paper_count": 6,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-06 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-05",
@@ -72,7 +137,14 @@
         "2026-11-05 예시 요약"
       ],
       "paper_count": 7,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-05 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-04",
@@ -80,7 +152,14 @@
         "2026-11-04 예시 요약"
       ],
       "paper_count": 7,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-04 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-03",
@@ -88,7 +167,14 @@
         "2026-11-03 예시 요약"
       ],
       "paper_count": 8,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-03 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-02",
@@ -96,7 +182,14 @@
         "2026-11-02 예시 요약"
       ],
       "paper_count": 5,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-02 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-11-01",
@@ -104,7 +197,14 @@
         "2026-11-01 예시 요약"
       ],
       "paper_count": 9,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-11-01 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-31",
@@ -112,7 +212,14 @@
         "2026-10-31 예시 요약"
       ],
       "paper_count": 9,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-31 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-30",
@@ -120,7 +227,14 @@
         "2026-10-30 예시 요약"
       ],
       "paper_count": 5,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-30 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-29",
@@ -128,7 +242,14 @@
         "2026-10-29 예시 요약"
       ],
       "paper_count": 9,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-29 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-28",
@@ -136,7 +257,14 @@
         "2026-10-28 예시 요약"
       ],
       "paper_count": 6,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-28 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-27",
@@ -144,7 +272,14 @@
         "2026-10-27 예시 요약"
       ],
       "paper_count": 6,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-27 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-26",
@@ -152,7 +287,14 @@
         "2026-10-26 예시 요약"
       ],
       "paper_count": 7,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-26 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-25",
@@ -160,7 +302,14 @@
         "2026-10-25 예시 요약"
       ],
       "paper_count": 9,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-25 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-24",
@@ -168,7 +317,14 @@
         "2026-10-24 예시 요약"
       ],
       "paper_count": 4,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-24 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-23",
@@ -176,7 +332,14 @@
         "2026-10-23 예시 요약"
       ],
       "paper_count": 5,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-23 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-22",
@@ -184,7 +347,14 @@
         "2026-10-22 예시 요약"
       ],
       "paper_count": 7,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-22 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-21",
@@ -192,7 +362,14 @@
         "2026-10-21 예시 요약"
       ],
       "paper_count": 8,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-21 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-20",
@@ -200,7 +377,14 @@
         "2026-10-20 예시 요약"
       ],
       "paper_count": 5,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-20 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-19",
@@ -208,7 +392,14 @@
         "2026-10-19 예시 요약"
       ],
       "paper_count": 7,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-19 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-18",
@@ -216,7 +407,14 @@
         "2026-10-18 예시 요약"
       ],
       "paper_count": 8,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-18 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-17",
@@ -224,7 +422,14 @@
         "2026-10-17 예시 요약"
       ],
       "paper_count": 6,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-17 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-16",
@@ -232,7 +437,14 @@
         "2026-10-16 예시 요약"
       ],
       "paper_count": 9,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-16 예시 요약"
+          ]
+        }
+      }
     },
     {
       "date": "2026-10-15",
@@ -240,7 +452,14 @@
         "2026-10-15 예시 요약"
       ],
       "paper_count": 4,
-      "featured_count": 3
+      "featured_count": 3,
+      "i18n": {
+        "ko": {
+          "headline": [
+            "2026-10-15 예시 요약"
+          ]
+        }
+      }
     }
   ]
 }

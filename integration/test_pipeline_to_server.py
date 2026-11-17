@@ -260,7 +260,7 @@ class EchoTranslator:
 
 
 def test_translations_end_to_end(server, tmp_path, monkeypatch):
-    # FR-33 ~ FR-35: 파이프라인이 번역을 미리 올리고, 앱이 lang 으로 읽는다 (논문 원문은 영어 그대로, FR-34 개정)
+    # FR-38 ~ FR-42: 파이프라인이 요약류의 반대 언어를 미리 올리고, 같은 응답에 두 언어 (원문은 영어 그대로)
     from radar.config import TranslateConfig
 
     monkeypatch.setenv("RADAR_IT_TOKEN", TOKEN)
@@ -288,9 +288,13 @@ def test_translations_end_to_end(server, tmp_path, monkeypatch):
     assert runner(None).run_daily() == EXIT_OK
     assert runner(EchoTranslator()).run_translate(days=30) == EXIT_OK
     with httpx.Client(base_url=server) as app:
-        en = app.get("/api/v1/digests/latest", params={"lang": "en"}).json()
-        assert en["headline"][0].startswith("[번역] ") and not en["untranslated"]
-        ko = app.get("/api/v1/papers/2611.00001", params={"lang": "ko"}).json()["paper"]
-        assert ko["title"] == "[번역] Agent memory study"
-        assert ko["full_text"] == "# Agent memory study\n\nFull body." and not ko["untranslated"]  # 논문 원문은 영어
+        # 4주기: 같은 응답에 두 언어. AI 없이 만든 요약은 영어 → 한국어 번역이 붙는다
+        digest = app.get("/api/v1/digests/latest").json()
+        assert set(digest["i18n"]) == {"en", "ko"} and digest["i18n"]["ko"]["headline"][0].startswith("[번역] ")
+        paper = app.get("/api/v1/papers/2611.00001").json()["paper"]
+        assert paper["i18n"]["en"]["one_liner"] == "Summary of Agent memory study."
+        assert paper["i18n"]["ko"]["one_liner"] == "[번역] Summary of Agent memory study."
+        # 원문 (제목 · 본문) 은 언제나 영어
+        assert paper["title"] == "Agent memory study"
+        assert paper["full_text"] == "# Agent memory study\n\nFull body."
         assert app.get("/api/v1/papers", params={"q": "[번역]"}).json()["total"] == 1

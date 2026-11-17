@@ -43,7 +43,6 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _searched = false;
   bool _offline = false;
   String? _error;
-  String? _lang;
 
   @override
   void dispose() {
@@ -86,14 +85,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = Services.of(context).settings;
-    final interests = settings.interests;
-    if (_lang != null && _lang != settings.language && _searched) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _search(); // BR-A30: 결과를 새 언어로
-      });
-    }
-    _lang = settings.language;
+    final interests = Services.of(context).settings.interests;
     final items = rankByInterest(_items, (PaperBrief p) => briefInterests(p, interests).isNotEmpty);
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),

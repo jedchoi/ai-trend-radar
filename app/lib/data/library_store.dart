@@ -86,6 +86,7 @@ PaperBrief newsAsBrief(NewsBrief n) => PaperBrief(
       oneLiner: n.summary,
       upvotes: 0,
       featured: false,
+      i18n: n.i18n.rename('summary', 'one_liner'), // BR-A53: 두 언어 함께 저장
     );
 
 class LibraryStore extends ChangeNotifier {

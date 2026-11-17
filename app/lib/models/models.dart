@@ -1,7 +1,9 @@
+import 'i18n.dart';
 import 'json.dart';
 import 'topic.dart';
 import '../l10n/strings.dart';
 
+export 'i18n.dart';
 export 'news.dart';
 export 'topic.dart';
 
@@ -41,20 +43,27 @@ class PaperBrief {
     required this.title,
     required this.date,
     required this.topic,
-    required this.oneLiner,
+    required String oneLiner,
     required this.upvotes,
     required this.featured,
     this.githubUrl,
-  });
+    this.i18n = const I18n(),
+  }) : _oneLiner = oneLiner;
 
   final String id;
   final String title;
   final String date;
   final Topic topic;
-  final String oneLiner;
+  final String _oneLiner;
   final int upvotes;
   final bool featured;
   final String? githubUrl;
+
+  /// 요약의 두 언어 (FR-39). 제목은 원문 그대로.
+  final I18n i18n;
+
+  /// 지금 언어의 한 줄 요약 (BR-A50).
+  String get oneLiner => i18n.pick((j) => i18nString(j, 'one_liner'), _oneLiner);
 
   factory PaperBrief.fromJson(Json j) => PaperBrief(
         id: str(j, 'id'),
@@ -65,17 +74,20 @@ class PaperBrief {
         upvotes: integer(j, 'upvotes'),
         featured: boolean(j, 'featured'),
         githubUrl: strOrNull(j, 'github_url'),
+        i18n: I18n.fromJson(j),
       );
 
+  /// 보관함 저장용 (BR-A53: 두 언어 함께).
   Json toJson() => {
         'id': id,
         'title': title,
         'date': date,
         'topic': topic.slug,
-        'one_liner': oneLiner,
+        'one_liner': _oneLiner,
         'upvotes': upvotes,
         'featured': featured,
         'github_url': githubUrl,
+        'i18n': i18n.toJson(),
       };
 }
 
@@ -85,16 +97,16 @@ class Paper {
     required this.title,
     required this.date,
     required this.topic,
-    required this.oneLiner,
+    required String oneLiner,
     required this.upvotes,
     required this.featured,
     required this.authors,
     required this.abstract,
     required this.keywords,
-    required this.glossary,
+    required List<GlossaryItem> glossary,
     required this.hfUrl,
     required this.summarySource,
-    this.detail,
+    PaperDetail? detail,
     this.githubUrl,
     this.githubStars,
     this.projectUrl,
@@ -102,23 +114,38 @@ class Paper {
     this.arxivUrl,
     this.fullText,
     this.hasFullText = false,
-    this.untranslated = false,
-  });
+    this.i18n = const I18n(),
+  })  : _oneLiner = oneLiner,
+        _glossary = glossary,
+        _detail = detail;
 
   final String id;
   final String title;
   final String date;
   final Topic topic;
-  final String oneLiner;
+  final String _oneLiner;
   final int upvotes;
   final bool featured;
   final List<String> authors;
+
+  /// 초록 · 본문 · 제목은 원문 (영어) 그대로 (FR-41).
   final String abstract;
   final List<String> keywords;
-  final List<GlossaryItem> glossary;
+  final List<GlossaryItem> _glossary;
   final String hfUrl;
   final String summarySource;
-  final PaperDetail? detail;
+  final PaperDetail? _detail;
+
+  /// 요약류의 두 언어 (FR-39).
+  final I18n i18n;
+
+  /// 지금 언어의 한 줄 요약 · 상세 · 용어 (BR-A50).
+  String get oneLiner => i18n.pick((j) => i18nString(j, 'one_liner'), _oneLiner);
+
+  PaperDetail? get detail => i18n.pick<PaperDetail?>((j) => PaperDetail.fromJson(objOrNull(j, 'detail')), _detail);
+
+  List<GlossaryItem> get glossary => i18n.pick(
+      (j) => j['glossary'] is List ? list(j, 'glossary', GlossaryItem.fromJson) : null, _glossary);
   final String? githubUrl;
   final int? githubStars;
   final String? projectUrl;
@@ -133,8 +160,8 @@ class Paper {
   /// 서버에 본문 원문이 있는지 (일일 요약 응답에서도 알 수 있음).
   final bool hasFullText;
 
-  /// 고른 언어의 번역이 아직 없음 (BR-A34).
-  final bool untranslated;
+  /// 고른 언어의 요약이 아직 없음 (BR-A51).
+  bool get untranslated => i18n.pending('one_liner');
 
   bool get hasCode => githubUrl != null;
   bool get abstractBased => detail == null;
@@ -163,7 +190,7 @@ class Paper {
       arxivUrl: strOrNull(j, 'arxiv_url'),
       fullText: strOrNull(j, 'full_text'),
       hasFullText: boolean(j, 'has_full_text') || strOrNull(j, 'full_text') != null,
-      untranslated: boolean(j, 'untranslated'),
+      i18n: I18n.fromJson(j),
     );
   }
 
@@ -172,7 +199,8 @@ class Paper {
         title: title,
         date: date,
         topic: topic,
-        oneLiner: oneLiner,
+        oneLiner: _oneLiner,
+        i18n: i18n.only(const ['one_liner']),
         upvotes: upvotes,
         featured: featured,
         githubUrl: githubUrl,
@@ -235,19 +263,24 @@ class HubItem {
 class Digest {
   const Digest({
     required this.date,
-    required this.headline,
+    required List<String> headline,
     required this.provider,
     required this.papers,
     required this.hub,
-    this.untranslated = false,
-  });
+    this.i18n = const I18n(),
+  }) : _headline = headline;
 
   final String date;
-  final List<String> headline;
+  final List<String> _headline;
   final String provider;
   final List<Paper> papers;
   final List<HubItem> hub;
-  final bool untranslated;
+  final I18n i18n;
+
+  /// 지금 언어의 오늘의 세 줄 (BR-A50).
+  List<String> get headline => i18n.pick((j) => i18nStrings(j, 'headline'), _headline);
+
+  bool get untranslated => i18n.pending('headline');
 
   List<Paper> get featured => papers.where((p) => p.featured).toList(growable: false);
 
@@ -260,15 +293,25 @@ class Digest {
         provider: str(j, 'provider', 'none'),
         papers: list(j, 'papers', Paper.fromJson),
         hub: list(j, 'hub', HubItem.fromJson),
-        untranslated: boolean(j, 'untranslated'),
+        i18n: I18n.fromJson(j),
       );
 }
 
 class DigestSummary {
-  const DigestSummary({required this.date, required this.headline, required this.paperCount, required this.featuredCount});
+  const DigestSummary({
+    required this.date,
+    required List<String> headline,
+    required this.paperCount,
+    required this.featuredCount,
+    this.i18n = const I18n(),
+  }) : _headline = headline;
 
   final String date;
-  final List<String> headline;
+  final List<String> _headline;
+  final I18n i18n;
+
+  List<String> get headline => i18n.pick((j) => i18nStrings(j, 'headline'), _headline);
+
   final int paperCount;
   final int featuredCount;
 
@@ -277,6 +320,7 @@ class DigestSummary {
         headline: strings(j, 'headline'),
         paperCount: integer(j, 'paper_count'),
         featuredCount: integer(j, 'featured_count'),
+        i18n: I18n.fromJson(j),
       );
 
   static List<DigestSummary> listFromJson(Json j) => list(j, 'items', DigestSummary.fromJson);
@@ -365,9 +409,9 @@ class TrendReport {
     required this.topPapers,
     required this.hubNew,
     required this.hubSteady,
-    this.narrative,
-    this.untranslated = false,
-  });
+    String? narrative,
+    this.i18n = const I18n(),
+  }) : _narrative = narrative;
 
   final String period;
   final String key;
@@ -380,8 +424,13 @@ class TrendReport {
   final List<PaperBrief> topPapers;
   final List<HubNew> hubNew;
   final List<HubSteady> hubSteady;
-  final String? narrative;
-  final bool untranslated;
+  final String? _narrative;
+  final I18n i18n;
+
+  /// 지금 언어의 해석 문장 (BR-A50).
+  String? get narrative => i18n.pick<String?>((j) => i18nString(j, 'narrative'), _narrative);
+
+  bool get untranslated => i18n.pending('narrative');
 
   factory TrendReport.fromJson(Json j) => TrendReport(
         period: str(j, 'period', 'week'),
@@ -396,7 +445,7 @@ class TrendReport {
         hubNew: list(j, 'hub_new', HubNew.fromJson),
         hubSteady: list(j, 'hub_steady', HubSteady.fromJson),
         narrative: strOrNull(j, 'narrative'),
-        untranslated: boolean(j, 'untranslated'),
+        i18n: I18n.fromJson(j),
       );
 }
 

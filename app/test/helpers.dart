@@ -26,18 +26,10 @@ http.Response jsonResponse(Object body, [int status = 200]) => http.Response.byt
       headers: {'content-type': 'application/json; charset=utf-8'},
     );
 
-/// 언어별 예시가 있으면 그것 (예: paper_detail_ko), 없으면 기본 예시 (BR-S40 의 번역 없음과 같음).
-Map<String, dynamic> localizedSample(String name, String? lang) {
-  if (lang != null && File('../contract/samples/${name}_$lang.json').existsSync()) return sample('${name}_$lang');
-  return sample(name);
-}
-
 /// 경로별로 예시 응답을 돌려주는 가짜 서버. [requests] 에 요청 경로를 남긴다.
 MockClient sampleServer({List<String>? requests, int? failWith}) {
   return MockClient((request) async {
     final path = request.url.path;
-    final lang = request.url.queryParameters['lang'];
-    Map<String, dynamic> sample(String name) => localizedSample(name, lang);
     requests?.add(request.url.toString().replaceFirst(testServer, ''));
     if (failWith != null) return jsonResponse({'error': 'x'}, failWith);
     if (path == '/api/v1/digests') return jsonResponse(sample('digests'));

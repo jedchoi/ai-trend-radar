@@ -336,3 +336,23 @@
 **Context**: BR-P34 개정 (뉴스 먼저), FR-34 · BR-P40 · BR-P41 · BR-A35 개정
 
 ---
+## 사용자 입력 (변경 요청)
+**Timestamp**: 2026-11-18T02:00:00Z
+**User Input**: "한/영이 내가생각한 대로 되지 않았네.
+한국어든 영어든 내가 바꾸면 요약이 그 언어대로 바뀌는게 아니라, 선택된 언어에 상관없이 항상 한국어로 번역된걸 보여주고 Abstract랑, full text는 항상 영어네.
+
+내가 원하는건, 요약된 언어가 한/영을 바꿀때마다 해당 언어로 전환되고, Abstract랑, full text는 항상 영어로 유지해. 
+
+그러니까 요약한 내용들은 한국어/영어 모두 갖고있어야하고, 동일한 api에서 두 언어 모두를 제공하고, 앱에서는 한/영 선택에따라 선택해서 보여주도록 수정해.
+aidlc기법을 모두 적용해" / (작업 중) "물어보지말고 완료해"
+**AI Response**: "원인: ① 영어 번역이 아직 만들어지지 않아 (06:00 첫 번역 전) 서버가 원래 값 (한국어 요약) 을 돌려줌 ② 설계가 '요청마다 한 언어 (lang)' 라 사용자의 의도 (같은 응답에 두 언어, 앱이 고름) 와 다름. 4주기로 재설계: 응답마다 i18n {ko, en} (요약류만), 제목 · 초록 · 본문 · 뉴스 본문은 영어 원문 그대로, lang 매개변수 · untranslated 제거, 앱은 다시 받지 않고 바로 전환. 번역은 요약류만 (기준 언어 = 글자에 한글이 있으면 ko) 반대 언어로. 사용자 지시에 따라 질문 없이 끝까지 진행 (Standing Approval)"
+**Context**: 4주기 시작 (3주기 설계의 응답 방식 · 번역 범위 개정)
+
+---
+## Requirements · Stories · Design · Code Generation · Build and Test · Traceability (4주기)
+**Timestamp**: 2026-11-18T02:55:00Z
+**User Input**: (사용자 위임 — "물어보지말고 완료해")
+**AI Response**: "requirements FR-38 ~ FR-42 (FR-33 · FR-34 대체), stories US-32 ~ US-34, cycle4-design.md. TDD: server test_i18n 다시 작성 → RED → i18n.py (build_i18n, 한글 기준 언어) · translations_all · 응답 i18n · lang/untranslated 삭제 · 번역 업로드 허용 필드 축소 → GREEN 96. 작업 중 실수로 repository 의 list_news/get_news 를 지웠다가 테스트로 발견해 복구. pipeline test_translate 다시 작성 → RED → 반대 언어 · 요약류만 · 종류별 묶음, 긴 본문 번역 · TRANSLATE_TEXT 제거 → GREEN 127. 통합 5. 앱: models/i18n.dart, 모델 getter 가 지금 언어 → 다른 언어 → 원래 값, 요청에서 lang 제거, 언어 바꿔도 다시 받지 않음, 원문 영역 '원문', 보관함 두 언어 저장, cycle4_test 13개. p95 140 ms. phase-check-cycle4 GAP 0 · ORPHAN 0"
+**Context**: 4주기 완료. ⚠️ 앱 테스트 · 실제 번역은 사용자 Mac
+
+---

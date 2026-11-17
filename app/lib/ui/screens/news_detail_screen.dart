@@ -25,7 +25,6 @@ class NewsDetailScreen extends StatefulWidget {
 
 class _NewsDetailScreenState extends State<NewsDetailScreen> {
   LoadController<News>? _c;
-  String? _lang;
 
   @override
   void didChangeDependencies() {
@@ -53,13 +52,6 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final services = Services.of(context);
-    final lang = services.settings.language;
-    if (_lang != null && _lang != lang) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _c!.load(); // BR-A30
-      });
-    }
-    _lang = lang;
     return ListenableBuilder(
       listenable: Listenable.merge([_c!, services.library]),
       builder: (context, _) {
@@ -159,8 +151,8 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             onPressed: () => openLink(context, b.url),
           ),
         ),
-        SectionTitle(originalTitle(translated: !n.untranslated && AppLang.english == false),
-            subtitle: n.content.isEmpty ? null : originalSubtitle(n.content.length, translated: !n.untranslated)),
+        // 뉴스 본문은 언제나 영어 원문 (FR-41, BR-A52)
+        SectionTitle(originalTitle(), subtitle: n.content.isEmpty ? null : originalSubtitle(n.content.length)),
         if (blocks.isEmpty) EmptyNote(tr('저장된 본문이 없습니다. 위의 버튼으로 원문을 여세요.', 'No stored body. Open the original with the button above.')),
         for (final block in blocks) OriginalBlock(block),
       ],

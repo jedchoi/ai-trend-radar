@@ -14,7 +14,7 @@ tool/radar-up.sh            # Postgres + API (Docker) → 지난 90일 채우기
 tool/radar-up.sh --status   # 서버 · 일정 · 최근 실행
 ```
 
-한국어 ↔ 영어: 앱 위쪽 `EN` / `한` 버튼. 번역은 PC 가 매일 미리 만들어 서버에 저장한다 (원문 본문까지). 지난 데이터를 한 번에 번역하려면 `tool/radar-daily.sh --translate 90` (AI 가 필요, 몇 시간 걸리고 끊겨도 이어서 한다).
+한국어 ↔ 영어: 앱 위쪽 `EN` / `한` 버튼. 요약 (한 줄 요약 · 상세 · 용어 · 세 줄 · 뉴스 요약 · 리포트) 은 서버 응답에 두 언어가 함께 와서 바로 바뀌고, 제목 · 초록 · 본문은 영어 원문 그대로다. 반대 언어는 PC 가 매일 미리 번역해 둔다. 지난 데이터를 한 번에 채우려면 `tool/radar-daily.sh --translate 90` (AI 필요, 끊겨도 이어서 한다).
 
 릴리즈 APK 파일만 만들려면 `tool/build-apk.sh` (서버 주소 내장, 결과는 `dist/`, `--install` 로 USB 기기에 설치).
 

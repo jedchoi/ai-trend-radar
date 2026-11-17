@@ -143,7 +143,6 @@ def test_prompts_are_plain_files():
         "report": "REPORT",
         "news": "NEWS",
         "translate": "TRANSLATE",
-        "translate_text": "TRANSLATE_TEXT",
     }
     assert json.dumps(names)
 

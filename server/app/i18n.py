@@ -1,10 +1,15 @@
-"""언어별 응답 (C-S8, BR-S40): 미리 저장한 번역 (translations 표) 을 응답 모델에 덮어쓴다.
+"""두 언어 응답 (C-S8, 4주기 FR-38 ~ FR-41, BR-S50 · BR-S51).
 
-원래 표는 원문 (영어) 과 AI 요약 (한국어) 을 그대로 두고, 반대 언어 값만 번역으로 둔다.
-lang 이 없으면 아무것도 바꾸지 않는다 (호환).
+응답의 각 항목에 `i18n: {"ko": {...}, "en": {...}}` 를 붙인다 (요약류만).
+- 기준 언어 = 원래 값에 한글이 있으면 ko, 없으면 en. i18n[기준 언어] = 원래 값
+- 반대 언어 = translations 표의 값 (있을 때만). 기준 언어와 같은 언어의 번역은 쓰지 않는다
+- 원문 (제목 · 초록 · 본문) 은 i18n 에 넣지 않는다 — 언제나 원래 값 (FR-41)
 """
 
 from __future__ import annotations
+
+import json
+import re
 
 from pydantic import BaseModel
 
@@ -12,83 +17,102 @@ from app.repository import Repository
 from app.schemas import (
     Digest,
     DigestSummary,
-    GlossaryItem,
     News,
     NewsBrief,
     Paper,
     PaperBrief,
-    PaperDetail,
     PaperWithRelated,
     TrendReport,
 )
 
-PAPER_FIELDS = ("title", "one_liner", "detail", "glossary")  # 논문 원문 (초록 · 본문) 은 영어 그대로
-BRIEF_FIELDS = ("title", "one_liner")
-NEWS_FIELDS = ("title", "summary", "key_points", "content")
-NEWS_BRIEF_FIELDS = ("title", "summary")
+_HANGUL = re.compile(r"[가-힣]")
+PAPER_FIELDS = ("one_liner", "detail", "glossary")
+NEWS_FIELDS = ("summary", "key_points")
 
 
-def _apply[M: BaseModel](model: M, fields: dict | None, allowed: tuple[str, ...], flag: bool = False) -> M:
-    update = {k: v for k, v in (fields or {}).items() if k in allowed}
-    if "detail" in update:
-        update["detail"] = PaperDetail.model_validate(update["detail"])
-    if "glossary" in update:
-        update["glossary"] = [GlossaryItem.model_validate(g) for g in update["glossary"]]
-    if flag:
-        update["untranslated"] = fields is None
-    return model.model_copy(update=update)
+def base_lang(value: object) -> str:
+    """BR-S50."""
+    return "ko" if _HANGUL.search(json.dumps(value, ensure_ascii=False)) else "en"
+
+
+def build_i18n(primary: object, base: dict, translations: dict[str, dict] | None, allowed: tuple[str, ...]) -> dict:
+    lang = base_lang(primary)
+    other = "en" if lang == "ko" else "ko"
+    out: dict[str, dict] = {}
+    own = {k: v for k, v in base.items() if v not in (None, "", [], {})}
+    if own:
+        out[lang] = own
+    translated = {k: v for k, v in (translations or {}).get(other, {}).items() if k in allowed}
+    if translated:
+        out[other] = translated
+    return out
+
+
+def _dump(value):
+    if isinstance(value, BaseModel):
+        return value.model_dump()
+    if isinstance(value, list):
+        return [_dump(v) for v in value]
+    return value
 
 
 class Localizer:
     def __init__(self, repo: Repository) -> None:
         self.repo = repo
 
-    def papers(self, papers: list[Paper], lang: str, light: bool = True) -> list[Paper]:
-        found = self.repo.translations("paper", [p.id for p in papers], lang, light=light)
-        return [_apply(p, found.get(p.id), PAPER_FIELDS, flag=True) for p in papers]
+    def papers(self, papers: list[Paper]) -> list[Paper]:
+        found = self.repo.translations_all("paper", [p.id for p in papers])
+        out = []
+        for p in papers:
+            base = {"one_liner": p.one_liner, "detail": _dump(p.detail), "glossary": _dump(p.glossary)}
+            out.append(p.model_copy(update={"i18n": build_i18n(p.one_liner, base, found.get(p.id), PAPER_FIELDS)}))
+        return out
 
-    def briefs(self, briefs: list[PaperBrief], lang: str | None) -> list[PaperBrief]:
-        if not lang:
-            return briefs
-        found = self.repo.translations("paper", [b.id for b in briefs], lang, light=True)
-        return [_apply(b, found.get(b.id), BRIEF_FIELDS) for b in briefs]
+    def briefs(self, briefs: list[PaperBrief]) -> list[PaperBrief]:
+        found = self.repo.translations_all("paper", [b.id for b in briefs])
+        return [
+            b.model_copy(
+                update={"i18n": build_i18n(b.one_liner, {"one_liner": b.one_liner}, found.get(b.id), ("one_liner",))}
+            )
+            for b in briefs
+        ]
 
-    def digest(self, digest: Digest, lang: str | None) -> Digest:
-        if not lang:
-            return digest
-        head = self.repo.translations("digest", [digest.date.isoformat()], lang).get(digest.date.isoformat())
-        digest = _apply(digest, head, ("headline",), flag=True)
-        return digest.model_copy(update={"papers": self.papers(digest.papers, lang)})
+    def digest(self, digest: Digest) -> Digest:
+        key = digest.date.isoformat()
+        found = self.repo.translations_all("digest", [key]).get(key)
+        i18n = build_i18n(digest.headline, {"headline": digest.headline}, found, ("headline",))
+        return digest.model_copy(update={"i18n": i18n, "papers": self.papers(digest.papers)})
 
-    def digest_list(self, items: list[DigestSummary], lang: str | None) -> list[DigestSummary]:
-        if not lang:
-            return items
-        found = self.repo.translations("digest", [d.date.isoformat() for d in items], lang)
-        return [_apply(d, found.get(d.date.isoformat()), ("headline",)) for d in items]
+    def digest_list(self, items: list[DigestSummary]) -> list[DigestSummary]:
+        found = self.repo.translations_all("digest", [d.date.isoformat() for d in items])
+        return [
+            d.model_copy(
+                update={
+                    "i18n": build_i18n(
+                        d.headline, {"headline": d.headline}, found.get(d.date.isoformat()), ("headline",)
+                    )
+                }
+            )
+            for d in items
+        ]
 
-    def paper(self, data: PaperWithRelated, lang: str | None) -> PaperWithRelated:
-        if not lang:
-            return data
-        return PaperWithRelated(
-            paper=self.papers([data.paper], lang, light=False)[0], related=self.briefs(data.related, lang)
-        )
+    def paper(self, data: PaperWithRelated) -> PaperWithRelated:
+        return PaperWithRelated(paper=self.papers([data.paper])[0], related=self.briefs(data.related))
 
-    def news_list(self, items: list[NewsBrief], lang: str | None) -> list[NewsBrief]:
-        if not lang:
-            return items
-        found = self.repo.translations("news", [n.id for n in items], lang, light=True)
-        return [_apply(n, found.get(n.id), NEWS_BRIEF_FIELDS) for n in items]
+    def news_list(self, items: list[NewsBrief]) -> list[NewsBrief]:
+        found = self.repo.translations_all("news", [n.id for n in items])
+        return [
+            n.model_copy(update={"i18n": build_i18n(n.summary, {"summary": n.summary}, found.get(n.id), ("summary",))})
+            for n in items
+        ]
 
-    def news(self, news: News, lang: str | None) -> News:
-        if not lang:
-            return news
-        found = self.repo.translations("news", [news.id], lang).get(news.id)
-        return _apply(news, found, NEWS_FIELDS, flag=True)
+    def news(self, news: News) -> News:
+        found = self.repo.translations_all("news", [news.id]).get(news.id)
+        base = {"summary": news.summary, "key_points": news.key_points}
+        return news.model_copy(update={"i18n": build_i18n(news.summary, base, found, NEWS_FIELDS)})
 
-    def report(self, report: TrendReport, lang: str | None) -> TrendReport:
-        if not lang:
-            return report
+    def report(self, report: TrendReport) -> TrendReport:
         key = f"{report.period}:{report.key}"
-        found = self.repo.translations("report", [key], lang).get(key)
-        report = _apply(report, found, ("narrative",), flag=True)
-        return report.model_copy(update={"top_papers": self.briefs(report.top_papers, lang)})
+        found = self.repo.translations_all("report", [key]).get(key)
+        i18n = build_i18n(report.narrative, {"narrative": report.narrative}, found, ("narrative",))
+        return report.model_copy(update={"i18n": i18n, "top_papers": self.briefs(report.top_papers)})

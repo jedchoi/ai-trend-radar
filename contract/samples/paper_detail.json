@@ -33,7 +33,26 @@
     "hf_url": "https://huggingface.co/papers/2611.10439",
     "arxiv_url": "https://arxiv.org/abs/2611.10439",
     "has_full_text": true,
-    "untranslated": false
+    "i18n": {
+      "ko": {
+        "one_liner": "여러 사용자 · 여러 에이전트 대화에서 누가 무엇을 기억해야 하는지 나눠 저장하는 메모리 추출 방법",
+        "detail": {
+          "what": "대화에서 개인 · 그룹 · 에이전트 단위 기억을 따로 뽑아 저장하는 방법을 제안했다.",
+          "novelty": "기억의 주인과 범위를 명시적으로 나눈다.",
+          "why": "팀용 챗봇에서 다른 사람의 정보가 섞여 답하는 문제를 줄인다.",
+          "apply": "사내 비서 봇의 메모리를 사용자 · 팀 단위 키로 분리 저장하는 설계에 참고할 수 있다."
+        }
+      },
+      "en": {
+        "detail": {
+          "why": "Reduces team chatbots mixing up other people's information.",
+          "what": "Proposes extracting personal, group and agent-level memories separately from conversations.",
+          "apply": "Useful when designing per-user and per-team memory keys for an internal assistant bot.",
+          "novelty": "Makes the owner and scope of each memory explicit."
+        },
+        "one_liner": "A memory extraction method that separates who should remember what in multi-user, multi-agent chats"
+      }
+    }
   },
   "related": [
     {
@@ -44,7 +63,12 @@
       "one_liner": "긴 작업을 하는 에이전트에서 판단 모델을 행동자 · 심판 · 교사 중 어디에 쓰는 게 나은지 비교",
       "upvotes": 36,
       "featured": true,
-      "github_url": null
+      "github_url": null,
+      "i18n": {
+        "ko": {
+          "one_liner": "긴 작업을 하는 에이전트에서 판단 모델을 행동자 · 심판 · 교사 중 어디에 쓰는 게 나은지 비교"
+        }
+      }
     },
     {
       "id": "2611.16961",
@@ -54,7 +78,12 @@
       "one_liner": "언제 길게 생각하고 언제 바로 답할지 학습하는 하이브리드 모델",
       "upvotes": 9,
       "featured": false,
-      "github_url": null
+      "github_url": null,
+      "i18n": {
+        "ko": {
+          "one_liner": "언제 길게 생각하고 언제 바로 답할지 학습하는 하이브리드 모델"
+        }
+      }
     },
     {
       "id": "2611.08219",
@@ -64,7 +93,12 @@
       "one_liner": "실제 업무 자료로 합성한 데이터로 생산성 에이전트를 확장",
       "upvotes": 8,
       "featured": false,
-      "github_url": null
+      "github_url": null,
+      "i18n": {
+        "ko": {
+          "one_liner": "실제 업무 자료로 합성한 데이터로 생산성 에이전트를 확장"
+        }
+      }
     },
     {
       "id": "261112.00000",
@@ -74,7 +108,12 @@
       "one_liner": "video · moe 관련 예시 논문",
       "upvotes": 24,
       "featured": true,
-      "github_url": null
+      "github_url": null,
+      "i18n": {
+        "ko": {
+          "one_liner": "video · moe 관련 예시 논문"
+        }
+      }
     },
     {
       "id": "261112.00003",
@@ -84,7 +123,12 @@
       "one_liner": "rl · agent 관련 예시 논문",
       "upvotes": 23,
       "featured": false,
-      "github_url": null
+      "github_url": null,
+      "i18n": {
+        "ko": {
+          "one_liner": "rl · agent 관련 예시 논문"
+        }
+      }
     }
   ]
 }

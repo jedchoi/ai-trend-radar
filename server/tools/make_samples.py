@@ -318,14 +318,8 @@ NEWS = [
     },
 ]
 
-# 3주기: 미리 번역해 둔 값 (예시로 작성)
+# 4주기: 요약류의 반대 언어 번역 (예시로 작성). 원문 (제목 · 초록 · 본문) 은 번역하지 않는다
 TRANSLATIONS = [
-    {
-        "kind": "paper",
-        "key": "2611.10439",
-        "lang": "ko",
-        "fields": {"title": "누가 무엇을 기억하나? 다중 사용자 · 다중 에이전트 대화를 위한 다층 기억 추출"},
-    },
     {
         "kind": "paper",
         "key": "2611.10439",
@@ -365,15 +359,6 @@ TRANSLATIONS = [
     {
         "kind": "news",
         "key": "ggml-org/llama-cpp-v1",
-        "lang": "ko",
-        "fields": {
-            "title": "llama.cpp v1",
-            "content": "(예시 번역 본문) llama.cpp 로 다양한 하드웨어에서 멀티모달 LLM 을 실행할 수 있다.",
-        },
-    },
-    {
-        "kind": "news",
-        "key": "ggml-org/llama-cpp-v1",
         "lang": "en",
         "fields": {
             "summary": "llama.cpp reached 1.0 and reorganized its distribution and hardware support (sample).",
@@ -393,13 +378,6 @@ SAMPLES = {
     "trend_periods.json": "/api/v1/trends/periods",
     "news_list.json": "/api/v1/news?limit=20",
     "news_detail.json": "/api/v1/news/ggml-org/llama-cpp-v1",
-    "digest_latest_en.json": "/api/v1/digests/latest?lang=en",
-    "paper_detail_ko.json": "/api/v1/papers/2611.10439?lang=ko",
-    "paper_detail_en.json": "/api/v1/papers/2611.10439?lang=en",
-    "news_list_ko.json": "/api/v1/news?limit=20&lang=ko",
-    "news_detail_ko.json": "/api/v1/news/ggml-org/llama-cpp-v1?lang=ko",
-    "news_detail_en.json": "/api/v1/news/ggml-org/llama-cpp-v1?lang=en",
-    "trend_weekly_en.json": "/api/v1/trends/weekly/latest?lang=en",
 }
 
 
